@@ -46,14 +46,30 @@ static char i2c_driver_buffer[BUFF_LEN];
 
 int i2c_driver_init(void) {
 
-	printk(KERN_INFO "Hello World\n");
+
+	result = register_chrdev(0, "i2c_driver", &i2c_driver_fops);
+	if(result < 0){
+
+		printk(KERN_ALERT "i2c_driver cannot obtain major number %d\n", i2c_driver_major);
+		return result;	
+
+	}
+
+	i2c_driver_major = result;
+	printk(KERN_ALERT "i2c_driver major number is %d\n", i2c_driver_major);
+	printk(KERN_INFO "Inserting i2c_driver module...\n");
+
+
 	return 0;
 
 }
 
 void i2c_driver_exit(void){
 
-	printk(KERN_INFO "Goodbye World\n");
+	// Free major number
+	unregister_chrdev(i2c_driver_major, "i2c_driver");
+	
+	printk(KERN_INFO "Removing i2c_driver module\n");
 
 }
 
