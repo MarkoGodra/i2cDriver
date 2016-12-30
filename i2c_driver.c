@@ -16,7 +16,7 @@
 
 MODULE_LICENSE("Dual BSD/GPL");
 
-#define GPIO_BASE_ADDR (0x7E200000)
+#define GPIO_BASE_ADDR (0x3F200000)
 
 #define BSC1_BASE_ADDR (0x7E804000)
 
@@ -118,6 +118,8 @@ static ssize_t i2c_driver_write(struct file *, const char *buf, size_t , loff_t 
 //Buffer to store data
 #define BUFF_LEN 80
 static char i2c_driver_buffer[BUFF_LEN];
+
+void *reg_addr = NULL;
 
 /* Structure that declares the usual file access functions. */
 struct file_operations i2c_driver_fops =
@@ -248,6 +250,22 @@ void SetGpioPinDirection(char pin, char direction){
     iowrite32(tmp, addr);
 }
 
+int InitBSC1Regs(void){
+
+	unsigned int base_addr_bsc1;
+	
+	/* Get BSC1 base addr */
+	base_addr_bsc1 = BSC1_BASE_ADDR;
+
+	reg_addr = ioremap(base_addr_bsc1, 24);
+	if(reg_addr == NULL){
+		return -1;
+	} else {
+		return 0;
+	}
+
+}
+
 
 
 int i2c_driver_init(void) {
@@ -263,10 +281,16 @@ int i2c_driver_init(void) {
 	}
 
 	i2c_driver_major = result;
-	printk(KERN_ALERT "i2c_driver major number is %d\n", i2c_driver_major);
 	printk(KERN_INFO "Inserting i2c_driver module...\n");
-
-	memset(i2c_driver_buffer, 0, BUFF_LEN);
+	printk(KERN_ALERT "i2c_driver major number is %d\n", i2c_driver_major);
+	printk(KERN_ALERT "Mapping memory to registers...");
+	result = InitBSC1Regs();
+	if(result < 0){
+		printk(KERN_ALERT "Couldn't remap registers base address\n");
+		return result;
+	}else{
+		printk(KERN_ALERT "Memory mapping complete\n");
+	}
 
 	SetGpioPinDirection(GPIO_02, GPIO_DIRECTION_ALT);
 	SetGpioPinDirection(GPIO_03, GPIO_DIRECTION_ALT);
@@ -351,5 +375,3 @@ static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, 
 }
 
 
-// Napraviti funkciju za gadjanje registara.
-// Po ugledu na njihov PUD i getGPFSELReg
