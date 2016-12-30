@@ -266,6 +266,28 @@ int InitBSC1Regs(void){
 
 }
 
+// Da li ide ovako ?
+void SetBSC1Reg(char dest, char val){
+
+	void *addr = NULL;
+
+	addr = ioremap(dest, 1);
+	iowrite8(val, addr);
+
+}
+
+// Da li ide ovako ?
+unsigned char GetBSC1Reg(char dest){
+
+	void *addr = NULL;
+	unsigned char temp;
+
+	addr = ioremap(dest,1);
+	temp = ioread8(addr);
+
+	return temp;
+
+}
 
 
 int i2c_driver_init(void) {
@@ -366,7 +388,11 @@ static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, 
 
 		return -EFAULT;
 
-	} else {	
+	} else {
+
+		// Operations:
+		// TODO:
+			
 
 		return len;
 
