@@ -349,3 +349,7 @@ static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, 
 	}
 
 }
+
+
+// Napraviti funkciju za gadjanje registara.
+// Po ugledu na njihov PUD i getGPFSELReg
