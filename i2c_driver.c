@@ -18,6 +18,18 @@ MODULE_LICENSE("Dual BSD/GPL");
 
 #define GPIO_BASE_ADDR (0x7E200000)
 
+#define BSC1_BASE_ADDR (0x7E804000)
+
+/* BSC1 registers i hit */
+#define BSC1_REG_C (BSC1_BASE_ADDR + 0x00000000)
+#define BSC1_REG_S (BSC1_BASE_ADDR + 0x00000004)
+#define BSC1_REG_DLEN (BSC1_BASE_ADDR + 0x00000008)
+#define BSC1_REG_SLAVE_ADDR (BSC1_BASE_ADDR + 0x0000000C)
+#define BSC1_REG_FIFO (BSC1_BASE_ADDR + 0x00000010)
+#define BSC1_REG_DIV (BSC1_BASE_ADDR + 0x00000014)
+#define BSC1_REG_DEL (BSC1_BASE_ADDR + 0x00000018)
+#define BSC1_REG_CLKT (BSC1_BASE_ADDR + 0x0000001C)
+
 //Handle GPIO: 0-9
 /* GPIO Function Select 0. */
 #define GPFSEL0_BASE_ADDR (GPIO_BASE_ADDR + 0x00000000)
@@ -99,21 +111,23 @@ void i2c_driver_exit(void);
 static int i2c_driver_open(struct inode *, struct file *);
 static int i2c_driver_release(struct inode *, struct file *);
 static ssize_t i2c_driver_read(struct file *, char *buf, size_t, loff_t *);
-static ssize_t i2c_driver_write(struct file *, const char *buf, ssize_t, loff_t *);
+//static ssize_t i2c_driver_write(struct file *, const char *buf, ssize_t, loff_t *);
+static ssize_t i2c_driver_write(struct file *, const char *buf, size_t , loff_t *);
+
 
 //Buffer to store data
 #define BUFF_LEN 80
 static char i2c_driver_buffer[BUFF_LEN];
 
-// Structure that declares the usual file access functions
-struct file_operations i2c_driver_fops = {
-
-	open : i2c_driver_open,
-	release : i2c_driver_release,
-	read : i2c_driver_read,
-	write : i2c_driver_write
-
+/* Structure that declares the usual file access functions. */
+struct file_operations i2c_driver_fops =
+{
+    open    :   i2c_driver_open,
+    release :   i2c_driver_release,
+    read    :   i2c_driver_read,
+    write   :   i2c_driver_write
 };
+
 
 module_init(i2c_driver_init);
 module_exit(i2c_driver_exit);
@@ -256,7 +270,8 @@ int i2c_driver_init(void) {
 
 	SetGpioPinDirection(GPIO_02, GPIO_DIRECTION_ALT);
 	SetGpioPinDirection(GPIO_03, GPIO_DIRECTION_ALT);
-	//Treba setovati PUD
+	SetInternalPullUpDown(GPIO_02, PULL_UP);
+	SetInternalPullUpDown(GPIO_03, PULL_DOWN);
 	
 	return 0;
 
@@ -275,6 +290,8 @@ void i2c_driver_exit(void){
 
 static int i2c_driver_open(struct inode *inode, struct file *flip){
 
+	memset(i2c_driver_buffer, 0, BUFF_LEN);
+
 	return 0;
 
 }
@@ -287,12 +304,48 @@ static int i2c_driver_release(struct inode *inode, struct file *flip){
 
 static ssize_t i2c_driver_read(struct file *flip, char *buf, size_t len, loff_t *f_pos) {
 
-	return 0;
+	/* Size of valid data - data to send into user space. */
+	int data_size = 0;
+
+	// Operations
+	// TODO:
+
+	if(*f_pos == 0) {
+
+		data_size = strlen(i2c_driver_buffer);
+
+		if(copy_to_user(buf, i2c_driver_buffer, data_size) != 0) {
+
+			return -EFAULT;
+		
+		} else {
+
+			(*f_pos) += data_size;
+			return data_size;	
+	
+		}
+	
+	} else {
+
+		return 0;
+
+	}
 
 }
 
-static ssize_t i2c_driver_write(struct file *flip, const char *buf, ssize_t len, loff_t *f_pos){
+static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, loff_t *f_pos){
 
-	return 0;
+	/* Reset memory. */
+	memset(i2c_driver_buffer, 0, BUFF_LEN);	
+	
+	if(copy_from_user(i2c_driver_buffer, buf, len) != 0) {
+
+		return -EFAULT;
+
+	} else {	
+
+		return len;
+
+	}
 
 }
