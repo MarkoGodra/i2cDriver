@@ -252,7 +252,12 @@ int i2c_driver_init(void) {
 	printk(KERN_ALERT "i2c_driver major number is %d\n", i2c_driver_major);
 	printk(KERN_INFO "Inserting i2c_driver module...\n");
 
+	memset(i2c_driver_buffer, 0, BUFF_LEN);
 
+	SetGpioPinDirection(GPIO_02, GPIO_DIRECTION_ALT);
+	SetGpioPinDirection(GPIO_03, GPIO_DIRECTION_ALT);
+	//Treba setovati PUD
+	
 	return 0;
 
 }
@@ -261,6 +266,8 @@ void i2c_driver_exit(void){
 
 	// Free major number
 	unregister_chrdev(i2c_driver_major, "i2c_driver");
+	SetInternalPullUpDown(GPIO_02, PULL_NONE);
+	SetInternalPullUpDown(GPIO_03, PULL_NONE);
 	
 	printk(KERN_INFO "Removing i2c_driver module\n");
 
