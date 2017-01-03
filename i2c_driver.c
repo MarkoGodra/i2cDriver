@@ -257,7 +257,7 @@ int InitBSC1Regs(void){
 	/* Get BSC1 base addr */
 	base_addr_bsc1 = BSC1_BASE_ADDR;
 
-	reg_addr = ioremap(base_addr_bsc1, 24);
+	reg_addr = ioremap(base_addr_bsc1, 256);
 	if(reg_addr == NULL){
 		return -1;
 	} else {
@@ -267,23 +267,23 @@ int InitBSC1Regs(void){
 }
 
 // Da li ide ovako ?
-void SetBSC1Reg(char dest, char val){
+void SetBSC1Reg(unsigned long dest, unsigned long val){
 
 	void *addr = NULL;
 
-	addr = ioremap(dest, 1);
-	iowrite8(val, addr);
+	addr = ioremap(dest, 4);
+	iowrite32(val, addr);
 
 }
 
 // Da li ide ovako ?
-unsigned char GetBSC1Reg(char dest){
+unsigned char GetBSC1Reg(unsigned long dest){
 
 	void *addr = NULL;
 	unsigned char temp;
 
-	addr = ioremap(dest,1);
-	temp = ioread8(addr);
+	addr = ioremap(dest, 4);
+	temp = ioread32(addr);
 
 	return temp;
 
@@ -306,6 +306,7 @@ int i2c_driver_init(void) {
 	printk(KERN_INFO "Inserting i2c_driver module...\n");
 	printk(KERN_ALERT "i2c_driver major number is %d\n", i2c_driver_major);
 	printk(KERN_ALERT "Mapping memory to registers...");
+	
 	result = InitBSC1Regs();
 	if(result < 0){
 		printk(KERN_ALERT "Couldn't remap registers base address\n");
@@ -318,6 +319,16 @@ int i2c_driver_init(void) {
 	SetGpioPinDirection(GPIO_03, GPIO_DIRECTION_ALT);
 	SetInternalPullUpDown(GPIO_02, PULL_UP);
 	SetInternalPullUpDown(GPIO_03, PULL_DOWN);
+
+	/* Initialize i2c slave */
+	
+	SetBSC1Reg(BSC1_REG_C, 0x00008080); // C <- saljem, nema prekida
+	SetBSC1Reg(BSC1_REG_DLEN, 0x00000001); // DLEN <- 1
+
+
+	//TODO:
+
+	SetBSC1Reg(BSC1_REG_S, 0x00000047); // S <- setovanje s
 	
 	return 0;
 
