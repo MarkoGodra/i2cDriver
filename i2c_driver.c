@@ -288,6 +288,23 @@ unsigned char GetBSC1Reg(unsigned long dest){
 
 }
 
+// Nisam siguran za ovo...
+void InitSlave(void) {
+
+	/* Initialize i2c slave */
+	
+	SetBSC1Reg(BSC1_REG_C, 0x00008080); // C <- saljem, nema prekida
+	SetBSC1Reg(BSC1_REG_DLEN, 0x00000001); // DLEN <- 1
+	SetBSC1Reg(BSC1_REG_SLAVE_ADDR, 0x000000A5);
+	SetBSC1Reg(BSC1_REG_FIFO, 0x00000040);
+	SetBSC1Reg(BSC1_REG_DIV, 0x00000000);
+	SetBSC1Reg(BSC1_REG_DEL, 0x00000000);
+	SetBSC1Reg(BSC1_REG_CLKT, 0x0000008);
+	SetBSC1Reg(BSC1_REG_S, 0x00000047); // S <- setovanje s
+	
+
+}
+
 
 int i2c_driver_init(void) {
 
@@ -319,16 +336,9 @@ int i2c_driver_init(void) {
 	SetInternalPullUpDown(GPIO_02, PULL_UP);
 	SetInternalPullUpDown(GPIO_03, PULL_DOWN);
 
-	/* Initialize i2c slave */
-	
-	SetBSC1Reg(BSC1_REG_C, 0x00008080); // C <- saljem, nema prekida
-	SetBSC1Reg(BSC1_REG_DLEN, 0x00000001); // DLEN <- 1
 
+	InitSlave();
 
-	//TODO:
-
-	SetBSC1Reg(BSC1_REG_S, 0x00000047); // S <- setovanje s
-	
 	return 0;
 
 }
@@ -362,7 +372,7 @@ static ssize_t i2c_driver_read(struct file *flip, char *buf, size_t len, loff_t 
 
 	/* Size of valid data - data to send into user space. */
 	int data_size = 0;
-
+	printk(KERN_ALERT "Reading...");
 	// Operations
 	// TODO:
 
@@ -392,7 +402,8 @@ static ssize_t i2c_driver_read(struct file *flip, char *buf, size_t len, loff_t 
 static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, loff_t *f_pos){
 
 	/* Reset memory. */
-	memset(i2c_driver_buffer, 0, BUFF_LEN);	
+	memset(i2c_driver_buffer, 0, BUFF_LEN);
+	printk(KERN_ALERT "Writing...");
 	
 	if(copy_from_user(i2c_driver_buffer, buf, len) != 0) {
 
