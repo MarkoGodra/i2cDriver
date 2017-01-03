@@ -111,7 +111,6 @@ void i2c_driver_exit(void);
 static int i2c_driver_open(struct inode *, struct file *);
 static int i2c_driver_release(struct inode *, struct file *);
 static ssize_t i2c_driver_read(struct file *, char *buf, size_t, loff_t *);
-//static ssize_t i2c_driver_write(struct file *, const char *buf, ssize_t, loff_t *);
 static ssize_t i2c_driver_write(struct file *, const char *buf, size_t , loff_t *);
 
 
