@@ -110,9 +110,8 @@ int i2c_driver_init(void);
 void i2c_driver_exit(void);
 static int i2c_driver_open(struct inode *, struct file *);
 static int i2c_driver_release(struct inode *, struct file *);
-static ssize_t i2c_driver_read(struct file *, char *buf, size_t, loff_t *);
-static ssize_t i2c_driver_write(struct file *, const char *buf, size_t , loff_t *);
-
+static ssize_t i2c_driver_read(struct file *, char *buf, size_t , loff_t *);
+static ssize_t i2c_driver_write(struct file *, const char *buf, size_t, loff_t *);
 
 //Buffer to store data
 #define BUFF_LEN 80
@@ -128,7 +127,6 @@ struct file_operations i2c_driver_fops =
     read    :   i2c_driver_read,
     write   :   i2c_driver_write
 };
-
 
 module_init(i2c_driver_init);
 module_exit(i2c_driver_exit);
@@ -276,7 +274,7 @@ void SetBSC1Reg(unsigned long dest, unsigned long val){
 }
 
 // Da li ide ovako ?
-unsigned char GetBSC1Reg(unsigned long dest){
+unsigned long GetBSC1Reg(unsigned long dest){
 
 	void *addr = NULL;
 	unsigned char temp;
@@ -368,11 +366,11 @@ static int i2c_driver_release(struct inode *inode, struct file *flip){
 
 }
 
-static ssize_t i2c_driver_read(struct file *flip, char *buf, size_t len, loff_t *f_pos) {
 
-	/* Size of valid data - data to send into user space. */
+static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t *f_pos) {
+
 	int data_size = 0;
-	printk(KERN_ALERT "Reading...");
+	
 	// Operations
 	// TODO:
 
@@ -401,9 +399,7 @@ static ssize_t i2c_driver_read(struct file *flip, char *buf, size_t len, loff_t 
 
 static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, loff_t *f_pos){
 
-	/* Reset memory. */
-	memset(i2c_driver_buffer, 0, BUFF_LEN);
-	printk(KERN_ALERT "Writing...");
+
 	
 	if(copy_from_user(i2c_driver_buffer, buf, len) != 0) {
 
@@ -419,6 +415,6 @@ static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, 
 
 	}
 
-}
+} 
 
 
