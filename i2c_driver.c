@@ -289,17 +289,35 @@ unsigned long GetBSC1Reg(unsigned long dest){
 // Nisam siguran za ovo...
 void InitSlave(void) {
 
+	unsigned long temp;
+
 	/* Initialize i2c slave */
 	
-	SetBSC1Reg(BSC1_REG_C, 0x00008080); // C <- saljem, nema prekida
-	SetBSC1Reg(BSC1_REG_DLEN, 0x00000001); // DLEN <- 1
-	SetBSC1Reg(BSC1_REG_SLAVE_ADDR, 0x000000A5);
-	SetBSC1Reg(BSC1_REG_FIFO, 0x00000040);
-	SetBSC1Reg(BSC1_REG_DIV, 0x00000000);
+	SetBSC1Reg(BSC1_REG_C, 0x00008200); // C <- saljem, nema prekida
+	SetBSC1Reg(BSC1_REG_DLEN, 0x00000003); // DLEN <- 1
+	SetBSC1Reg(BSC1_REG_SLAVE_ADDR, 0x000000A5); //Slave adresa za upis (adresa nunchuka)
+	SetBSC1Reg(BSC1_REG_FIFO, 0x00000040); // ono sto saljem nunchuku
+	SetBSC1Reg(BSC1_REG_DIV, 0x00000000); 
 	SetBSC1Reg(BSC1_REG_DEL, 0x00000000);
 	SetBSC1Reg(BSC1_REG_CLKT, 0x0000008);
 	SetBSC1Reg(BSC1_REG_S, 0x00000047); // S <- setovanje s
 	
+	// Starting transfer
+	temp = GetBSC1Reg(BSC1_REG_C);
+	temp ^= 0x00000080;
+	SetBSC1Reg(BSC1_REG_C, temp);
+	
+	// Wait while transfer is done
+	//while(!(GetBSC1Reg(BSC1_REG_S) & 0x00000004));
+
+	SetBSC1Reg(BSC1_REG_FIFO, 0x00000000);
+	
+	// Starting transfer
+	temp = GetBSC1Reg(BSC1_REG_C);
+    temp ^= 0x00000080;
+	SetBSC1Reg(BSC1_REG_C, temp);
+
+	printk(KERN_ALERT "Slave device init done");
 
 }
 
