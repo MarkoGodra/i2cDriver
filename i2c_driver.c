@@ -13,10 +13,9 @@
 #include <linux/hrtimer.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
+#include <linux/delay.h>
 
 MODULE_LICENSE("Dual BSD/GPL");
-
-// 123434
 
 /* GPIO base address */
 #define GPIO_BASE_ADDR (0x3F200000)
@@ -267,34 +266,27 @@ void InitSlave(void) {
 	
 	/* Setup C reg */
 	iowrite32(SETUP_CTRL, reg_c);
-	temp = ioread32(reg_c);
-
+	
 	/* Write to FIFO reg */
 	iowrite32(0x00000042, reg_fifo);
 	iowrite32(0x00000000, reg_fifo);
 
 	/* Setup DLEN reg */
 	iowrite32(0x00000002, reg_dlen);
-	temp = ioread32(reg_dlen);
 
 	/* Starting transfer */
 	iowrite32(START_TRANSFER, reg_c);
-
-	temp = ioread32(reg_dlen);
-	printk(KERN_ALERT "DLEN: %u\n", temp);
 	
-	temp = ioread32(reg_s);
-	temp &= 1;
-	printk(KERN_ALERT "TA: %u\n", temp);
-
-	temp = ioread32(reg_s);
-	temp &= 0x00000200;
-	printk(KERN_ALERT "CLKT: %u\n", temp); 
+	/* Polling */
+	do {
+		temp = ioread32(reg_s);
+		msleep(1);
+	} while(temp & (1 << 1));
 
 	temp = ioread32(reg_s);
 	temp_d = temp;
 
-	if(!(temp & (1<<8))) // If ERROR == 0
+	if(!(temp & (1 << 8))) // If ERROR == 0
 		printk(KERN_ALERT "No errors detected");
 	else
 		printk(KERN_ALERT "Errors Detected\n");
@@ -391,6 +383,12 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 
 	/* Triger transfer */
 	iowrite32(START_TRANSFER, reg_c);
+
+	/* Polling */
+	do {
+		temp = ioread32(reg_s);
+		msleep(1);
+	} while(temp & (1 << 1));
 
 	temp = ioread32(reg_s);
 	temp_d = temp;
