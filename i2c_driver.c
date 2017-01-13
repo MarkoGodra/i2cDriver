@@ -20,6 +20,10 @@ MODULE_LICENSE("Dual BSD/GPL");
 
 #define BSC1_BASE_ADDR (0x7E804000)
 
+#define INP_GPIO(g) *(gpio+((g)/10)) &= ~(7<<(((g)%10)*3))
+#define SET_GPIO_ALT(g,a) *(gpio+(((g)/10))) |= (((a)<=3?(a)+4:(a)==4?3:2)        <<(((g)%10)*3))
+ 
+
 /* BSC1 registers i hit */
 #define BSC1_REG_C (BSC1_BASE_ADDR + 0x00000000)
 #define BSC1_REG_S (BSC1_BASE_ADDR + 0x00000004)
@@ -133,10 +137,23 @@ module_exit(i2c_driver_exit);
 
 //Major number
 int i2c_driver_major;
+volatile unsigned *gpio;
+
+/*static void bcm2708_set_gpio_alt(int pin, int alt)
+{
+
+#define INP_GPIO(g) *(gpio+((g)/10)) &= ~(7<<(((g)%10)*3))
+#define SET_GPIO_ALT(g,a) *(gpio+(((g)/10))) |= (((a)<=3?(a)+4:(a)==4?3:2)        <<(((g)%10)*3))
+   	unsigned int *gpio;
+    gpio = ioremap(0x7E200000, 4);
+    INP_GPIO(pin);
+    SET_GPIO_ALT(pin, alt);
+#undef INP_GPIO
+#undef SET_GPIO_ALT
+} */
 
 unsigned int GetGPFSELReg(char pin){
-    
-	unsigned int addr;
+    	unsigned int addr;
      if(pin >= 0 && pin <10)
         addr = GPFSEL0_BASE_ADDR;
     else if(pin >= 10 && pin <20)
@@ -218,15 +235,15 @@ void SetInternalPullUpDown(char pin, char value){
     iowrite32(tmp, addr);
 }
 
-void SetGpioPinDirection(char pin, char direction){
-   
-	unsigned int base_addr; 
+void SetGpioPinDirection(char pin, char direction)
+{
+    unsigned int base_addr; 
     void *addr = NULL;
     unsigned int tmp;
     unsigned int mask;
     
     /* Get base address of function selection register. */
-    base_addr = GPFSEL2_BASE_ADDR; 
+    base_addr = GetGPFSELReg(pin);
 
     /* Calculate gpio pin offset. */
     pin = GetGPIOPinOffset(pin);    
@@ -234,20 +251,36 @@ void SetGpioPinDirection(char pin, char direction){
     /* Set gpio pin direction. */
     addr = ioremap(base_addr, 4);
     tmp = ioread32(addr);
-    if(direction)
-    { //set as output: set 1
-      mask = 0x1 << (pin*3);
-      tmp |= mask;
-    }
-    else
-    { //set as input: set 0
-      mask = ~(0x1 << (pin*3));
-      tmp &= mask;
-    }
+
+	printk(KERN_ALERT "Pre maske: %u \n", tmp);	
+
+    mask = ~(0b111 << (pin*3));
+    tmp &= mask;
+
+	printk(KERN_ALERT "Maskiran 1. put :%u \n", tmp);
+
+    mask = (direction & 0b111) << (pin*3);
+    tmp |= mask;
+
+	printk(KERN_ALERT "Maskiran 2. put: %u \n", tmp);
+
     iowrite32(tmp, addr);
 }
 
-
+void SetGpioPin(char pin)
+{
+    void *addr = NULL;
+    unsigned int tmp;
+    
+    /* Get base address of gpio set register. */
+    addr = (pin < 32) ? (void *) GPSET0_BASE_ADDR : (void *)GPSET1_BASE_ADDR;
+    pin = (pin < 32) ? pin : pin - 32;
+    
+    /* Set gpio. */
+    addr = ioremap((unsigned long)addr, 4);
+    tmp = 0x1 << pin;
+    iowrite32(tmp, addr);
+}
 int InitBSC1Regs(void){
 
 	unsigned int base_addr_bsc1;
@@ -294,8 +327,8 @@ void InitSlave(void) {
 	void *addr = NULL;
 	/* Initialize i2c slave */
 
-	addr = ioremap(BSC1_REG_SLAVE_ADDR, 4);
-	iowrite32(0x00000052, addr);
+	addr = ioremap(BSC1_REG_C, 4);
+	iowrite32(0x00008100, addr);
 	
 	//SetBSC1Reg(BSC1_REG_C, 0x00008100); // C <- saljem, nema prekida
 	
@@ -330,10 +363,10 @@ void InitSlave(void) {
 
 }
 
-
 int i2c_driver_init(void) {
 
-	int result;	
+	int result;
+	//volatile void *addr;	
 
 	result = register_chrdev(0, "i2c_driver", &i2c_driver_fops);
 	if(result < 0){
@@ -348,24 +381,35 @@ int i2c_driver_init(void) {
 	printk(KERN_ALERT "i2c_driver major number is %d\n", i2c_driver_major);
 	printk(KERN_ALERT "Mapping memory to registers...");
 	
-/*	result = InitBSC1Regs();
+	result = InitBSC1Regs();
 	if(result < 0){
 		printk(KERN_ALERT "Couldn't remap registers base address\n");
 		return result;
 	}else{
 		printk(KERN_ALERT "Memory mapping complete\n");
-	} */
+	}
 
 	SetGpioPinDirection(GPIO_02, GPIO_DIRECTION_ALT);
 	SetGpioPinDirection(GPIO_03, GPIO_DIRECTION_ALT);
+
+	/*INP_GPIO(GPIO_02);
+	SET_GPIO_ALT(GPIO_02, 0);
+
+	INP_GPIO(GPIO_03);
+	SET_GPIO_ALT(GPIO_03, 0); */
+
+	//bcm2708_set_gpio_alt(GPIO_02, 0);
+	//bcm2708_set_gpio_alt(GPIO_03, 0);
+
+	/* Setovanje alt0 fun */
+	//addr = ioremap(0x7E200000,4);
+	//iowrite32(0x00000900, addr);
+
+
+
 	SetInternalPullUpDown(GPIO_02, PULL_UP);
 	SetInternalPullUpDown(GPIO_03, PULL_DOWN);
 
-/*	addr = ioremap(0x7E200008,4);
-	iowrite32(addr, 0x00000100);
-	addr = ioremap(0x7E20000c,4);
-	iowrite32(addr, 0x00000800);
-*/
 	InitSlave();
 
 	return 0;
