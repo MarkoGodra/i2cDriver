@@ -260,12 +260,6 @@ void InitSlave(void) {
 
 	printk(KERN_ALERT "Vrednost napunjenog registra C: %u\n", temp);
 
-	/* Setup SLAVE_ADDR */
-	iowrite32(0x00000052, reg_slave_addr);
-	temp = ioread32(reg_slave_addr);
-
-	printk(KERN_ALERT "Vrednost napunjenog registra SLAVE_ADDR: %u\n", temp);
-
 	/* Write to FIFO reg */
 	iowrite32(0x00000042, reg_fifo);
 	iowrite32(0x00000000, reg_fifo);
@@ -296,6 +290,7 @@ void InitSlave(void) {
 int i2c_driver_init(void) {
 
 	int result;	
+	unsigned int temp;	
 
 	result = register_chrdev(0, "i2c_driver", &i2c_driver_fops);
 	if(result < 0){
@@ -321,6 +316,11 @@ int i2c_driver_init(void) {
 	reg_slave_addr = ioremap(BSC1_REG_DLEN, 4);
 	reg_fifo = ioremap(BSC1_REG_DLEN, 4);
 	reg_s = ioremap(BSC1_REG_DLEN, 4);
+
+	/* Set device address */
+	iowrite32(0x00000052, reg_slave_addr);
+	temp = ioread32(reg_slave_addr);
+	printk(KERN_ALERT "Value of SLAVE_ADDR: %u\n", temp);
 
 	InitSlave();
 
@@ -355,9 +355,28 @@ static int i2c_driver_release(struct inode *inode, struct file *flip){
 static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t *f_pos) {
 
 	int data_size = 0;
+	unsigned int temp = 0; 
 	
-	// Operations
-	// TODO:
+	/* Ready C reg for write, clear fifo */
+	iowrite32(0x00008010, reg_c);
+
+	/* Fill the fifo reg */
+	iowrite32(0x00000000, reg_fifo);
+
+	/* DLEN = 1 */
+	iowrite32(0x00000001, reg_dlen);
+
+	/* Transfer triger */
+	temp = ioread32(reg_c);
+	temp |= 1<<7; // Triger za start
+	iowrite32(temp, reg_c);
+
+	temp = ioread32(reg_s);
+
+	if(temp & 1<<8)
+		printk(KERN_INFO "Read request successesfull\n");
+	else
+		printk(KERN_INFO "Read request failed\n");
 
 	if(*f_pos == 0) {
 
