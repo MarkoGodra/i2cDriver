@@ -252,7 +252,12 @@ void SetGpioPinDirection(char pin, char direction){
 
 void InitSlave(void) {
 
-	unsigned int temp;
+	unsigned int temp = 0;
+	unsigned int temp_d = 0;
+
+	
+	/* Clear S reg */
+	iowrite32(0x00000302, reg_s);
 	
 	/* Setup C reg */
 	iowrite32(0x00008100, reg_c);
@@ -270,20 +275,23 @@ void InitSlave(void) {
 
 	printk(KERN_ALERT "Vrednost napunjenog registra DLEN: %u\n", temp);
 
-	/* Clear S reg */
-	iowrite32(0x00000102, reg_s);
-	
 	/* Starting transfer */
 	temp = ioread32(reg_c);
 	temp |= 1<<7;
 	iowrite32(temp, reg_c);
 	
 	temp = ioread32(reg_s);
+	temp_d = temp;
 
-	if(temp && 1<<1) // If DONE = 1
-		printk(KERN_ALERT "Write completed\n");
-	else 
-		printk(KERN_ALERT "Write failed\n");
+	if(!(temp & (1<<8))) // If ERROR == 0
+		printk(KERN_ALERT "No errors detected\n");
+	else
+		printk(KERN_ALERT "Errors Detected\n");
+
+	if(temp_d & (1 << 1)) // If DONE == 1
+		printk(KERN_ALERT "Handshake completed\n");
+	else
+		printk(KERN_ALERT "Handshake error\n");
 
 }
 
@@ -313,9 +321,9 @@ int i2c_driver_init(void) {
 	/* Remaping registers virtual addreses to physical */
 	reg_c = ioremap(BSC1_REG_C, 4);
 	reg_dlen = ioremap(BSC1_REG_DLEN, 4);
-	reg_slave_addr = ioremap(BSC1_REG_DLEN, 4);
-	reg_fifo = ioremap(BSC1_REG_DLEN, 4);
-	reg_s = ioremap(BSC1_REG_DLEN, 4);
+	reg_slave_addr = ioremap(BSC1_REG_SLAVE_ADDR, 4);
+	reg_fifo = ioremap(BSC1_REG_FIFO, 4);
+	reg_s = ioremap(BSC1_REG_S, 4);
 
 	/* Set device address */
 	iowrite32(0x00000052, reg_slave_addr);
