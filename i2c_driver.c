@@ -16,14 +16,12 @@
 
 MODULE_LICENSE("Dual BSD/GPL");
 
+/* GPIO base address */
 #define GPIO_BASE_ADDR (0x3F200000)
 
+/* Controller register base address */
 #define BSC1_BASE_ADDR (0x3F804000)
-
-/*#define INP_GPIO(g) *(gpio+((g)/10)) &= ~(7<<(((g)%10)*3))
-#define SET_GPIO_ALT(g,a) *(gpio+(((g)/10))) |= (((a)<=3?(a)+4:(a)==4?3:2)        <<(((g)%10)*3))*/
  
-
 /* BSC1 registers i hit */
 #define BSC1_REG_C (BSC1_BASE_ADDR + 0x00000000)
 #define BSC1_REG_S (BSC1_BASE_ADDR + 0x00000004)
@@ -99,7 +97,7 @@ MODULE_LICENSE("Dual BSD/GPL");
 #define GPPUDCLK1_BASE_ADDR (GPIO_BASE_ADDR + 0x0000009C)
 
 //Using gpio as alternate 0
-#define GPIO_DIRECTION_ALT (4)
+#define GPIO_DIRECTION_ALT0 (4)
 
 #define PULL_NONE (0)
 #define PULL_DOWN (1)
@@ -117,15 +115,9 @@ static int i2c_driver_release(struct inode *, struct file *);
 static ssize_t i2c_driver_read(struct file *, char *buf, size_t , loff_t *);
 static ssize_t i2c_driver_write(struct file *, const char *buf, size_t, loff_t *);
 
-//Buffer to store data
+/* Buffer to store data */
 #define BUFF_LEN 80
 static char i2c_driver_buffer[BUFF_LEN];
-
-volatile void *reg_c = NULL;
-volatile void *reg_dlen = NULL;
-volatile void *reg_slave_addr = NULL;
-volatile void *reg_fifo = NULL;
-volatile void *reg_s = NULL;
 
 /* Structure that declares the usual file access functions. */
 struct file_operations i2c_driver_fops =
@@ -139,9 +131,15 @@ struct file_operations i2c_driver_fops =
 module_init(i2c_driver_init);
 module_exit(i2c_driver_exit);
 
-//Major number
+/* Major number */
 int i2c_driver_major;
-volatile unsigned *gpio;
+
+/* Register addresses */
+volatile void *reg_c = NULL;
+volatile void *reg_dlen = NULL;
+volatile void *reg_slave_addr = NULL;
+volatile void *reg_fifo = NULL;
+volatile void *reg_s = NULL;
 
 unsigned int GetGPFSELReg(char pin){
     	unsigned int addr;
@@ -226,8 +224,8 @@ void SetInternalPullUpDown(char pin, char value){
     iowrite32(tmp, addr);
 }
 
-void SetGpioPinDirection(char pin, char direction)
-{
+void SetGpioPinDirection(char pin, char direction){
+
     unsigned int base_addr; 
     void *addr = NULL;
     unsigned int tmp;
@@ -243,64 +241,61 @@ void SetGpioPinDirection(char pin, char direction)
     addr = ioremap(base_addr, 4);
     tmp = ioread32(addr);
 
-	printk(KERN_ALERT "Pre maske: %u \n", tmp);	
-
     mask = ~(0b111 << (pin*3));
     tmp &= mask;
-
-	printk(KERN_ALERT "Maskiran 1. put :%u \n", tmp);
 
     mask = (direction & 0b111) << (pin*3);
     tmp |= mask;
 
-	printk(KERN_ALERT "Maskiran 2. put: %u \n", tmp);
-
     iowrite32(tmp, addr);
 }
 
-// Nisam siguran za ovo...
 void InitSlave(void) {
 
 	unsigned int temp;
-
+	
+	/* Setup C reg */
 	iowrite32(0x00008100, reg_c);
 	temp = ioread32(reg_c);
-	/* Initialize i2c slave */
-	//SetBSC1Reg(BSC1_REG_C, 0x00008100); // C <- saljem, nema prekida
+
+	printk(KERN_ALERT "Vrednost napunjenog registra C: %u\n", temp);
+
+	/* Setup SLAVE_ADDR */
+	iowrite32(0x00000052, reg_slave_addr);
+	temp = ioread32(reg_slave_addr);
+
+	printk(KERN_ALERT "Vrednost napunjenog registra SLAVE_ADDR: %u\n", temp);
+
+	/* Write to FIFO reg */
+	iowrite32(0x00000042, reg_fifo);
+	iowrite32(0x00000000, reg_fifo);
+
+	/* Setup DLEN reg */
+	iowrite32(0x00000002, reg_dlen);
+	temp = ioread32(reg_dlen);
+
+	printk(KERN_ALERT "Vrednost napunjenog registra DLEN: %u\n", temp);
+
+	/* Clear S reg */
+	iowrite32(0x00000102, reg_s);
 	
-	//temp = GetBSC1Reg(BSC1_REG_C); 
-
-	printk(KERN_ALERT "Vrednost napunjenog registra: %u\n", temp);
-
-	//SetBSC1Reg(BSC1_REG_DLEN, 0x00000002); // DLEN
-
-	//SetBSC1Reg(BSC1_REG_SLAVE_ADDR, 0x00000052); //Slave adresa za upis (adresa nunchuka)
-
-	//SetBSC1Reg(BSC1_REG_FIFO, 0x00000040); // ono sto saljem nunchuk 
-	//SetBSC1Reg(BSC1_REG_FIFO, 0x00000000);
-
-	//SetBSC1Reg(BSC1_REG_S, 0x00000102); // S <- setovanje s, clearujem da je TA done
+	/* Starting transfer */
+	temp = ioread32(reg_c);
+	temp |= 1<<7;
+	iowrite32(temp, reg_c);
 	
-	// Starting transfer
-	//temp = GetBSC1Reg(BSC1_REG_C);
-	//temp = temp | 1<<7;
-	//SetBSC1Reg(BSC1_REG_C, temp);
-	
-	//temp = GetBSC1Reg(BSC1_REG_S);
+	temp = ioread32(reg_s);
 
-	//if((temp && 1<<1) && !(temp && 1<<8))
-	//	printk(KERN_ALERT "Write completed\n");
-	//else 
-	//	printk(KERN_ALERT "Write failed\n");
-
-	printk(KERN_ALERT "Slave device init done");
+	if(temp && 1<<1) // If DONE = 1
+		printk(KERN_ALERT "Write completed\n");
+	else 
+		printk(KERN_ALERT "Write failed\n");
 
 }
 
 int i2c_driver_init(void) {
 
-	int result;
-	//volatile void *addr;	
+	int result;	
 
 	result = register_chrdev(0, "i2c_driver", &i2c_driver_fops);
 	if(result < 0){
@@ -313,21 +308,14 @@ int i2c_driver_init(void) {
 	i2c_driver_major = result;
 	printk(KERN_INFO "Inserting i2c_driver module...\n");
 	printk(KERN_ALERT "i2c_driver major number is %d\n", i2c_driver_major);
-	printk(KERN_ALERT "Mapping memory to registers...");
-	
-	/*result = InitBSC1Regs();
-	if(result < 0){
-		printk(KERN_ALERT "Couldn't remap registers base address\n");
-		return result;
-	}else{
-		printk(KERN_ALERT "Memory mapping complete\n");
-	} */
 
-	SetGpioPinDirection(GPIO_02, GPIO_DIRECTION_ALT);
-	SetGpioPinDirection(GPIO_03, GPIO_DIRECTION_ALT);
+	/* Setting pull up, and pin alt functions */
+	SetGpioPinDirection(GPIO_02, GPIO_DIRECTION_ALT0);
+	SetGpioPinDirection(GPIO_03, GPIO_DIRECTION_ALT0);
 	SetInternalPullUpDown(GPIO_02, PULL_UP);
 	SetInternalPullUpDown(GPIO_03, PULL_DOWN);
 
+	/* Remaping registers virtual addreses to physical */
 	reg_c = ioremap(BSC1_REG_C, 4);
 	reg_dlen = ioremap(BSC1_REG_DLEN, 4);
 	reg_slave_addr = ioremap(BSC1_REG_DLEN, 4);
@@ -342,7 +330,7 @@ int i2c_driver_init(void) {
 
 void i2c_driver_exit(void){
 
-	// Free major number
+	/* Free major number */
 	unregister_chrdev(i2c_driver_major, "i2c_driver");
 	SetInternalPullUpDown(GPIO_02, PULL_NONE);
 	SetInternalPullUpDown(GPIO_03, PULL_NONE);
