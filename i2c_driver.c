@@ -276,9 +276,14 @@ void InitSlave(void) {
 	printk(KERN_ALERT "Vrednost napunjenog registra DLEN: %u\n", temp);
 
 	/* Starting transfer */
-	temp = ioread32(reg_c);
-	temp |= 1<<7;
-	iowrite32(temp, reg_c);
+	iowrite32(0x00008080, reg_c);
+
+	temp = ioread32(reg_dlen);
+	printk("DLEN: %u\n", temp);
+	
+	temp = ioread32(reg_s);
+	temp &= 1;
+	printk("TA: %u\n", temp); 
 	
 	temp = ioread32(reg_s);
 	temp_d = temp;
