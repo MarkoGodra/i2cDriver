@@ -108,9 +108,11 @@ MODULE_LICENSE("Dual BSD/GPL");
 #define GPIO_02 (2)
 #define GPIO_03 (3)
 
-#define START_TRANSFER 0x00008080
+#define START_TRANSFER_SEND 0x00008080
+#define START_TRANSFER_RECIVE 0x00008081
 #define CLEAR_STATUS 0x00000302
-#define SETUP_CTRL 0x00008100
+#define SETUP_CTRL_SEND 0x00008100
+#define SETUP_CTRL_RECIVE 0x00008481
 
 // Declaration of i2c_driver.c functions
 int i2c_driver_init(void);
@@ -265,7 +267,7 @@ void InitSlave(void) {
 	iowrite32(CLEAR_STATUS, reg_s);
 	
 	/* Setup C reg */
-	iowrite32(SETUP_CTRL, reg_c);
+	iowrite32(SETUP_CTRL_SEND, reg_c);
 	
 	/* Write to FIFO reg */
 	iowrite32(0x00000042, reg_fifo);
@@ -275,7 +277,7 @@ void InitSlave(void) {
 	iowrite32(0x00000002, reg_dlen);
 
 	/* Starting transfer */
-	iowrite32(START_TRANSFER, reg_c);
+	iowrite32(START_TRANSFER_SEND, reg_c);
 	
 	/* Polling */
 	do {
@@ -373,7 +375,7 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	iowrite32(CLEAR_STATUS, reg_s); 
 	
 	/* Ready C reg for write, clear fifo */
-	iowrite32(SETUP_CTRL, reg_c);
+	iowrite32(SETUP_CTRL_SEND, reg_c);
 
 	/* Fill the fifo reg */
 	iowrite32(0x00000000, reg_fifo);
@@ -382,7 +384,7 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	iowrite32(0x00000001, reg_dlen);
 
 	/* Triger transfer */
-	iowrite32(START_TRANSFER, reg_c);
+	iowrite32(START_TRANSFER_SEND, reg_c);
 
 	/* Polling */
 	do {
@@ -402,6 +404,20 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 		printk(KERN_INFO "Read Request OK\n");
 	else
 		printk(KERN_INFO "Read Request is Denied\n");
+
+	/* Clear status register before new transmision */
+	iowrite32(CLEAR_STATUS, reg_s);
+
+	/* Ready C reg for read, clear fifo */
+	iowrite32(SETUP_CTRL_RECIVE, reg_c);
+
+	/* Set expected data length */
+	iowrite32(0x00000006, reg_dlen);
+
+	/* Start transfer */
+	iowrite32(START_TRANSFER_RECIVE, reg_c);
+
+	/* Polling */	
 
 	if(*f_pos == 0) {
 
