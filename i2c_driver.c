@@ -370,6 +370,7 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	int data_size = 0;
 	unsigned int temp = 0;
 	unsigned int temp_d = 0;
+	unsigned short i = 0;
 
 	/* Clear status register */
 	iowrite32(CLEAR_STATUS, reg_s); 
@@ -417,7 +418,18 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	/* Start transfer */
 	iowrite32(START_TRANSFER_RECIVE, reg_c);
 
-	/* Polling */	
+	/* Polling */
+	do{
+		temp = ioread32(reg_s);
+		temp = temp_d;
+		if(temp_d & (1 << 7)){ // If RXF == 1
+			i2c_driver_buffer[i] = ioread32(reg_fifo);
+		}
+		i++;
+	}while(temp & (1 << 1));
+
+	for(i = 0; i < strlen(i2c_driver_buffer); i++);
+		printk(KERN_ALERT "Recived data 1.: %c", i2c_driver_buffer[i]);	
 
 	if(*f_pos == 0) {
 
