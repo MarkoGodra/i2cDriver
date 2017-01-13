@@ -26,6 +26,6 @@ revert:
 	@mv -v $(DEST)/$(TARGET).orig $(DEST)/$(TARGET)
 
 clean:
-	rm -f *.o $(TARGET) .*.cmd .*.flags *.mod.c
+	rm -f *.o $(TARGET) .*.cmd .*.flags *.mod.c *.order *.symvers
 
 -include $(KDIR)/Rules.make
