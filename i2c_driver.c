@@ -107,6 +107,10 @@ MODULE_LICENSE("Dual BSD/GPL");
 #define GPIO_02 (2)
 #define GPIO_03 (3)
 
+#define START_TRANSFER 0x00008080
+#define CLEAR_STATUS 0x00000302
+#define SETUP_CTRL 0x00008100
+
 // Declaration of i2c_driver.c functions
 int i2c_driver_init(void);
 void i2c_driver_exit(void);
@@ -257,13 +261,11 @@ void InitSlave(void) {
 
 	
 	/* Clear S reg */
-	iowrite32(0x00000302, reg_s);
+	iowrite32(CLEAR_STATUS, reg_s);
 	
 	/* Setup C reg */
-	iowrite32(0x00008100, reg_c);
+	iowrite32(SETUP_CTRL, reg_c);
 	temp = ioread32(reg_c);
-
-	printk(KERN_ALERT "Vrednost napunjenog registra C: %u\n", temp);
 
 	/* Write to FIFO reg */
 	iowrite32(0x00000042, reg_fifo);
@@ -273,30 +275,32 @@ void InitSlave(void) {
 	iowrite32(0x00000002, reg_dlen);
 	temp = ioread32(reg_dlen);
 
-	printk(KERN_ALERT "Vrednost napunjenog registra DLEN: %u\n", temp);
-
 	/* Starting transfer */
-	iowrite32(0x00008080, reg_c);
+	iowrite32(START_TRANSFER, reg_c);
 
 	temp = ioread32(reg_dlen);
-	printk("DLEN: %u\n", temp);
+	printk(KERN_ALERT "DLEN: %u\n", temp);
 	
 	temp = ioread32(reg_s);
 	temp &= 1;
-	printk("TA: %u\n", temp); 
-	
+	printk(KERN_ALERT "TA: %u\n", temp);
+
+	temp = ioread32(reg_s);
+	temp &= 0x00000200;
+	printk(KERN_ALERT "CLKT: %u\n", temp); 
+
 	temp = ioread32(reg_s);
 	temp_d = temp;
 
 	if(!(temp & (1<<8))) // If ERROR == 0
-		printk(KERN_ALERT "No errors detected\n");
+		printk(KERN_ALERT "No errors detected");
 	else
 		printk(KERN_ALERT "Errors Detected\n");
 
 	if(temp_d & (1 << 1)) // If DONE == 1
-		printk(KERN_ALERT "Handshake completed\n");
+		printk(KERN_ALERT "Handshake completed");
 	else
-		printk(KERN_ALERT "Handshake error\n");
+		printk(KERN_ALERT "Handshake error, transfer incomplete\n");
 
 }
 
@@ -368,10 +372,14 @@ static int i2c_driver_release(struct inode *inode, struct file *flip){
 static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t *f_pos) {
 
 	int data_size = 0;
-	unsigned int temp = 0; 
+	unsigned int temp = 0;
+	unsigned int temp_d = 0;
+
+	/* Clear status register */
+	iowrite32(CLEAR_STATUS, reg_s); 
 	
 	/* Ready C reg for write, clear fifo */
-	iowrite32(0x00008010, reg_c);
+	iowrite32(SETUP_CTRL, reg_c);
 
 	/* Fill the fifo reg */
 	iowrite32(0x00000000, reg_fifo);
@@ -379,17 +387,21 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	/* DLEN = 1 */
 	iowrite32(0x00000001, reg_dlen);
 
-	/* Transfer triger */
-	temp = ioread32(reg_c);
-	temp |= 1<<7; // Triger za start
-	iowrite32(temp, reg_c);
+	/* Triger transfer */
+	iowrite32(START_TRANSFER, reg_c);
 
 	temp = ioread32(reg_s);
+	temp_d = temp;
 
-	if(temp & 1<<8)
-		printk(KERN_INFO "Read request successesfull\n");
+	if(!(temp & 1<<8))
+		printk(KERN_INFO "No Read Request Errors Detected\n");
 	else
-		printk(KERN_INFO "Read request failed\n");
+		printk(KERN_INFO "Read Read Request Error occured\n");
+
+	if(temp_d & 1<<1)
+		printk(KERN_INFO "Read Request OK\n");
+	else
+		printk(KERN_INFO "Read Request is Denied\n");
 
 	if(*f_pos == 0) {
 
