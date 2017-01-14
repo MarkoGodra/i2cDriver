@@ -112,7 +112,7 @@ MODULE_LICENSE("Dual BSD/GPL");
 #define START_TRANSFER_RECIVE 0x00008081
 #define CLEAR_STATUS 0x00000302
 #define SETUP_CTRL_SEND 0x00008100
-#define SETUP_CTRL_RECIVE 0x00008481
+#define SETUP_CTRL_RECIVE 0x00008081
 
 // Declaration of i2c_driver.c functions
 int i2c_driver_init(void);
@@ -317,6 +317,14 @@ int i2c_driver_init(void) {
 	printk(KERN_INFO "Inserting i2c_driver module...\n");
 	printk(KERN_ALERT "i2c_driver major number is %d\n", i2c_driver_major);
 
+	/* Allocating memory */
+	if (request_mem_region(BSC1_BASE_ADDR, 0x20, "i2c_driver") == NULL) {
+	
+		printk(KERN_INFO "Data memory not available\n");
+		return -1;
+
+	}
+
 	/* Setting pull up, and pin alt functions */
 	SetGpioPinDirection(GPIO_02, GPIO_DIRECTION_ALT0);
 	SetGpioPinDirection(GPIO_03, GPIO_DIRECTION_ALT0);
@@ -342,6 +350,9 @@ int i2c_driver_init(void) {
 }
 
 void i2c_driver_exit(void){
+
+	/* Free memory */
+	release_mem_region(BSC1_BASE_ADDR, 0x20);
 
 	/* Free major number */
 	unregister_chrdev(i2c_driver_major, "i2c_driver");
@@ -419,19 +430,18 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	iowrite32(START_TRANSFER_RECIVE, reg_c);
 
 	/* Polling */
-	//TODO:
-		
-/*	do{
+	do{
 		temp = ioread32(reg_s);
-		temp = temp_d;
-		if(temp_d & (1 << 7)){ // If RXF == 1
-			i2c_driver_buffer[i] = ioread32(reg_fifo);
-		}
-		i++;
+		msleep(1);
 	}while(temp & (1 << 1));
-*/
-//	for(i = 0; i < strlen(i2c_driver_buffer); i++);
-//		printk(KERN_ALERT "Recived data 1.: %c", i2c_driver_buffer[i]);	
+
+	temp = ioread32(reg_fifo);
+	printk(KERN_ALERT "data: %u\n", temp);
+
+	for(i = 0; i < 6; i++);
+		i2c_driver_buffer[i] = (char)ioread32(reg_fifo);
+		data_size = strlen(i2c_driver_buffer);
+		printk(KERN_ALERT "data: %d\n", data_size);	
 
 	if(*f_pos == 0) {
 
