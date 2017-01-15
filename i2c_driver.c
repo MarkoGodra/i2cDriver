@@ -322,7 +322,7 @@ void SendZero(void){
 
 	
 	/* Ready C reg for write, clear fifo */
-	iowrite32(SETUP_CTRL_SEND, reg_c);
+	iowrite32(SETUP_CTRL_SEND+1, reg_c);
 
 	temp = ioread32(reg_s);
 	temp &= 1 << 5;
@@ -525,7 +525,7 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	/* Waiting for DONE = 1 */
 	do{
 		temp = ioread32(reg_s);
-	}while((temp & 1));
+	}while(!(temp & (1 << 1)) && !(temp & 1));
 	
 	temp = ioread32(reg_s);
 	temp_d = temp;
