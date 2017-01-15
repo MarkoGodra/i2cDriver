@@ -285,7 +285,10 @@ void InitSlave(void) {
 	else
 		printk(KERN_ALERT "FIFO IS CLEAR");
 	
-	
+		temp = ioread32(reg_s);
+	temp &= 1 << 5;
+
+
 
 	if((!(temp & (1 << 8))) && (temp_d & (1<<1))) // If ERROR == 0
 		printk(KERN_ALERT "No errors detected");
@@ -357,6 +360,7 @@ void SendZero(void){
 	printk(KERN_ALERT "TA : %u\n", temp_d & 1);
 
 	/* Triger transfer */
+	printk(KERN_ALERT "STARTING TRANSFER");
 	iowrite32(START_TRANSFER_SEND, reg_c);
 
 	/* Polling */
@@ -364,8 +368,23 @@ void SendZero(void){
 		temp = ioread32(reg_s);
 	} while(!(temp & (1 << 1)));
 
+	temp = ioread32(reg_dlen);
+	printk(KERN_ALERT "DLEN: %u\n",temp);
+
+	
+	temp = ioread32(reg_s);
+	temp &= 1 << 5;
+
+	if(temp)
+		printk(KERN_ALERT "THERE IS SOMETHING IN FIFO");
+	else
+		printk(KERN_ALERT "FIFO IS CLEAR");
+
 	temp = ioread32(reg_s);
 	temp_d = temp;
+
+	printk(KERN_ALERT "DONE: %u\n", temp & (1 << 1)); 
+	printk(KERN_ALERT "TA : %u\n", temp_d & 1);
 
 	if(!(temp & 1<<8))
 		printk(KERN_INFO "No Read Request Errors Detected\n");
@@ -376,6 +395,8 @@ void SendZero(void){
 		printk(KERN_INFO "Read Request OK");
 	else
 		printk(KERN_INFO "Read Request is Denied");
+	
+	printk(KERN_ALERT "#########################");
 
 }
 
