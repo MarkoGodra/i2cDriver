@@ -423,8 +423,7 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	unsigned int temp_d = 0;
 	unsigned short i = 0;
 
-	SendZero();
-
+	SendZero(); // Tell nunchuck to prepare for data send
 
 	/* Clear status register before new transmision */
 	iowrite32(CLEAR_STATUS, reg_s);
@@ -432,8 +431,6 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	temp = ioread32(reg_s);
 	temp &= 1 << 1;
 	printk(KERN_ALERT "DONE POSLE CLEAR DONE: %u\n", temp);
-
-
 
 	/* Ready C reg for read, clear fifo */
 	iowrite32(SETUP_CTRL_RECIVE, reg_c);
@@ -452,23 +449,21 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	temp = ioread32(reg_dlen);
 	printk(KERN_ALERT "DLEN BEFORE TRANSFER : %u\n", temp);
 
-	temp = ioread32(reg_s);
-	temp &= 1 << 1;
-	printk(KERN_ALERT "DONE: %u\n", temp);
-
 	/* Start transfer */
+	printk(KERN_ALERT "STARTING TRANSFER");
 	iowrite32(START_TRANSFER_RECIVE, reg_c);
 
-	/* Waiting for transfer for TA = 0 */
+	/* Waiting for DONE = 1 */
 	do{
 
 		temp = ioread32(reg_s);
-		temp &= 1;
+		temp &= 1 << 1;
 
-	}while(temp);
+	}while(temp != 2);
 	
 	temp = ioread32(reg_s);
-	printk(KERN_ALERT "DONE: %d\n", temp & (1<<1));
+	temp &= 1 << 1;
+	printk(KERN_ALERT "DONE: %d\n", temp);
 
 	temp = ioread32(reg_s);
 	temp &= 1 << 5;
@@ -526,8 +521,7 @@ static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, 
 
 	} else {
 
-		// Operations:
-		// TODO:
+		
 			
 
 		return len;
