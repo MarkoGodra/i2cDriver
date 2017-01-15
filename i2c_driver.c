@@ -33,71 +33,24 @@ MODULE_LICENSE("Dual BSD/GPL");
 #define BSC1_REG_DEL (BSC1_BASE_ADDR + 0x00000018)
 #define BSC1_REG_CLKT (BSC1_BASE_ADDR + 0x0000001C)
 
-//Handle GPIO: 0-9
-/* GPIO Function Select 0. */
+
 #define GPFSEL0_BASE_ADDR (GPIO_BASE_ADDR + 0x00000000)
-
-//Handle GPIO: 10-19
-/* GPIO Function Select 1. */
 #define GPFSEL1_BASE_ADDR (GPIO_BASE_ADDR + 0x00000004)
-
-//Handle GPIO: 20-29
-/* GPIO Function Select 2. */
 #define GPFSEL2_BASE_ADDR (GPIO_BASE_ADDR + 0x00000008)
-
-//Handle GPIO: 30-39
-/* GPIO Function Select 3. */
 #define GPFSEL3_BASE_ADDR (GPIO_BASE_ADDR + 0x0000000C)
-
-//Handle GPIO: 40-49
-/* GPIO Function Select 4. */
 #define GPFSEL4_BASE_ADDR (GPIO_BASE_ADDR + 0x00000010)
-
-//Handle GPIO: 50-53
-/* GPIO Function Select 5. */
 #define GPFSEL5_BASE_ADDR (GPIO_BASE_ADDR + 0x00000014)
-
-//--
-//GPIO: 0-31
-/* GPIO Pin Output Set 0. */
 #define GPSET0_BASE_ADDR (GPIO_BASE_ADDR + 0x0000001C)
-
-//GPIO: 32-53
-/* GPIO Pin Output Set 1. */
 #define GPSET1_BASE_ADDR (GPIO_BASE_ADDR + 0x00000020)
-
-//--
-//GPIO: 0-31
-/* GPIO Pin Output Clear 0. */
 #define GPCLR0_BASE_ADDR (GPIO_BASE_ADDR + 0x00000028)
-
-//GPIO: 32-53
-/* GPIO Pin Output Clear 1. */
 #define GPCLR1_BASE_ADDR (GPIO_BASE_ADDR + 0x0000002C)
-
-//--
-//GPIO: 0-31
-/* GPIO Pin Level 0. */
 #define GPLEV0_BASE_ADDR (GPIO_BASE_ADDR + 0x00000034)
-
-//GPIO: 32-53
-/* GPIO Pin Level 1. */
 #define GPLEV1_BASE_ADDR (GPIO_BASE_ADDR + 0x00000038)
-
-//--
-//GPIO: 0-53
-/* GPIO Pin Pull-up/down Enable. */
 #define GPPUD_BASE_ADDR (GPIO_BASE_ADDR + 0x00000094)
-
-//GPIO: 0-31
-/* GPIO Pull-up/down Clock Register 0. */
 #define GPPUDCLK0_BASE_ADDR (GPIO_BASE_ADDR + 0x00000098)
-
-//GPIO: 32-53
-/* GPIO Pull-up/down Clock Register 1. */
 #define GPPUDCLK1_BASE_ADDR (GPIO_BASE_ADDR + 0x0000009C)
 
-//Using gpio as alternate 0
+/* Using gpio as alternate 0 */
 #define GPIO_DIRECTION_ALT0 (4)
 
 #define PULL_NONE (0)
@@ -108,11 +61,11 @@ MODULE_LICENSE("Dual BSD/GPL");
 #define GPIO_02 (2)
 #define GPIO_03 (3)
 
-#define START_TRANSFER_SEND 0x00008080
-#define START_TRANSFER_RECIVE 0x00008081
-#define CLEAR_STATUS 0x00000302
-#define SETUP_CTRL_SEND 0x00008100
-#define SETUP_CTRL_RECIVE 0x00008031
+#define START_TRANSFER_SEND (0x00008080)
+#define START_TRANSFER_RECIVE (0x00008081)
+#define CLEAR_STATUS (0x00000302)
+#define SETUP_CTRL_SEND (0x00008100)
+#define SETUP_CTRL_RECIVE (0x00008031)
 
 // Declaration of i2c_driver.c functions
 int i2c_driver_init(void);
@@ -519,13 +472,8 @@ static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, 
 
 	} else {
 
-		
-			
-
 		return len;
 
 	}
 
-} 
-
-
+}
