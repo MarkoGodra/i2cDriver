@@ -112,7 +112,7 @@ MODULE_LICENSE("Dual BSD/GPL");
 #define START_TRANSFER_RECIVE 0x00008081
 #define CLEAR_STATUS 0x00000302
 #define SETUP_CTRL_SEND 0x00008100
-#define SETUP_CTRL_RECIVE 0x000080B1
+#define SETUP_CTRL_RECIVE 0x00008031
 
 // Declaration of i2c_driver.c functions
 int i2c_driver_init(void);
@@ -262,7 +262,6 @@ void InitSlave(void) {
 	unsigned int temp = 0;
 	unsigned int temp_d = 0;
 
-	
 	/* Clear S reg */
 	iowrite32(CLEAR_STATUS, reg_s);
 	
@@ -297,6 +296,47 @@ void InitSlave(void) {
 		printk(KERN_ALERT "Handshake completed");
 	else
 		printk(KERN_ALERT "Handshake error, transfer incomplete\n");
+
+}
+
+void SendZero(void){
+
+	unsigned int temp = 0;
+	unsigned int temp_d = 0;
+
+	/* Clear status register */
+	iowrite32(CLEAR_STATUS, reg_s); 
+	
+	/* Ready C reg for write, clear fifo */
+	iowrite32(SETUP_CTRL_SEND, reg_c);
+
+	/* Fill the fifo reg */
+	iowrite32(0x00000000, reg_fifo);
+
+	/* DLEN = 1 */
+	iowrite32(0x00000001, reg_dlen);
+
+	/* Triger transfer */
+	iowrite32(START_TRANSFER_SEND, reg_c);
+
+	/* Polling */
+	do {
+		temp = ioread32(reg_s);
+		msleep(1);
+	} while(temp & (1 << 1));
+
+	temp = ioread32(reg_s);
+	temp_d = temp;
+
+	if(!(temp & 1<<8))
+		printk(KERN_INFO "No Read Request Errors Detected\n");
+	else
+		printk(KERN_INFO "Read Read Request Error occured\n");
+
+	if(temp_d & 1<<1)
+		printk(KERN_INFO "Read Request OK");
+	else
+		printk(KERN_INFO "Read Request is Denied");
 
 }
 
@@ -383,66 +423,75 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	unsigned int temp_d = 0;
 	unsigned short i = 0;
 
-	/* Clear status register */
-	iowrite32(CLEAR_STATUS, reg_s); 
-	
-	/* Ready C reg for write, clear fifo */
-	iowrite32(SETUP_CTRL_SEND, reg_c);
+	SendZero();
 
-	/* Fill the fifo reg */
-	iowrite32(0x00000000, reg_fifo);
-
-	/* DLEN = 1 */
-	iowrite32(0x00000001, reg_dlen);
-
-	/* Triger transfer */
-	iowrite32(START_TRANSFER_SEND, reg_c);
-
-	/* Polling */
-	do {
-		temp = ioread32(reg_s);
-		msleep(1);
-	} while(temp & (1 << 1));
-
-	temp = ioread32(reg_s);
-	temp_d = temp;
-
-	if(!(temp & 1<<8))
-		printk(KERN_INFO "No Read Request Errors Detected\n");
-	else
-		printk(KERN_INFO "Read Read Request Error occured\n");
-
-	if(temp_d & 1<<1)
-		printk(KERN_INFO "Read Request OK\n");
-	else
-		printk(KERN_INFO "Read Request is Denied\n");
 
 	/* Clear status register before new transmision */
 	iowrite32(CLEAR_STATUS, reg_s);
 
+	temp = ioread32(reg_s);
+	temp &= 1 << 1;
+	printk(KERN_ALERT "DONE POSLE CLEAR DONE: %u\n", temp);
+
+
+
 	/* Ready C reg for read, clear fifo */
 	iowrite32(SETUP_CTRL_RECIVE, reg_c);
 
+	temp = ioread32(reg_s);
+	temp &= 1 << 5;
+
+	if(temp)
+		printk(KERN_ALERT "FIFO GOT SOMETHING IN");
+	else
+		printk(KERN_ALERT "FIFO IS CLEAR");
+
 	/* Set expected data length */
 	iowrite32(0x00000006, reg_dlen);
+	
+	temp = ioread32(reg_dlen);
+	printk(KERN_ALERT "DLEN BEFORE TRANSFER : %u\n", temp);
+
+	temp = ioread32(reg_s);
+	temp &= 1 << 1;
+	printk(KERN_ALERT "DONE: %u\n", temp);
 
 	/* Start transfer */
 	iowrite32(START_TRANSFER_RECIVE, reg_c);
 
-	/* Polling */
+	/* Waiting for transfer for TA = 0 */
+	do{
+
+		temp = ioread32(reg_s);
+		temp &= 1;
+
+	}while(temp);
+	
+	temp = ioread32(reg_s);
+	printk(KERN_ALERT "DONE: %d\n", temp & (1<<1));
+
+	temp = ioread32(reg_s);
+	temp &= 1 << 5;
+
+	if(temp)
+		printk(KERN_ALERT "FIFO GOT SOMETHING IN");
+	else
+		printk(KERN_ALERT "FIFO IS CLEAR");
+
+	temp = ioread32(reg_dlen);
+	printk(KERN_ALERT "DLEN: %u\n", temp);
+
 	do{
 		temp = ioread32(reg_s);
-		msleep(1);
-	}while(temp & (1 << 1));
-
-	temp = ioread32(reg_fifo);
-	printk(KERN_ALERT "data: %u\n", temp);
-	printk(KERN_ALERT "i: %d\n", i);
-
-	for(i = 0; i < 6; i++);
-		i2c_driver_buffer[i] = (char)ioread32(reg_fifo);
-		data_size = strlen(i2c_driver_buffer);
-		printk(KERN_ALERT "data: %d\n", data_size);	
+		temp &= 1<<5;
+		temp_d = ioread32(reg_fifo);
+		i2c_driver_buffer[i] = (temp_d ^ 0x17) + 0x17;
+		i++;
+		printk(KERN_ALERT "DATA: %u\n", temp_d);
+		if(i == 6)
+			break;				
+	
+	}while(temp);
 
 	if(*f_pos == 0) {
 
