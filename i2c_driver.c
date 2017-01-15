@@ -281,8 +281,7 @@ void InitSlave(void) {
 	/* Polling */
 	do {
 		temp = ioread32(reg_s);
-		msleep(1);
-	} while(temp & (1 << 1));
+	} while(!(temp & (1 << 1))); // While !DONE
 
 	temp = ioread32(reg_s);
 	temp_d = temp;
@@ -322,8 +321,7 @@ void SendZero(void){
 	/* Polling */
 	do {
 		temp = ioread32(reg_s);
-		msleep(1);
-	} while(temp & (1 << 1));
+	} while(!(temp & (1 << 1)));
 
 	temp = ioread32(reg_s);
 	temp_d = temp;
