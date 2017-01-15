@@ -112,7 +112,7 @@ MODULE_LICENSE("Dual BSD/GPL");
 #define START_TRANSFER_RECIVE 0x00008081
 #define CLEAR_STATUS 0x00000302
 #define SETUP_CTRL_SEND 0x00008100
-#define SETUP_CTRL_RECIVE 0x00008081
+#define SETUP_CTRL_RECIVE 0x000080B1
 
 // Declaration of i2c_driver.c functions
 int i2c_driver_init(void);
@@ -437,6 +437,7 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 
 	temp = ioread32(reg_fifo);
 	printk(KERN_ALERT "data: %u\n", temp);
+	printk(KERN_ALERT "i: %d\n", i);
 
 	for(i = 0; i < 6; i++);
 		i2c_driver_buffer[i] = (char)ioread32(reg_fifo);
