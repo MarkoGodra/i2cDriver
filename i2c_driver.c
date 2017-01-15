@@ -291,9 +291,9 @@ void InitSlave(void) {
 
 
 	if((!(temp & (1 << 8))) && (temp_d & (1<<1))) // If ERROR == 0
-		printk(KERN_ALERT "No errors detected");
+		printk(KERN_ALERT "No errors detected, INIT OK");
 	else
-		printk(KERN_ALERT "Errors Detected\n");
+		printk(KERN_ALERT "Errors Detected, INIT FAILED\n");
 
 	/*if(temp_d & (1 << 1)) // If DONE == 1
 		printk(KERN_ALERT "Handshake completed");
@@ -386,17 +386,18 @@ void SendZero(void){
 	printk(KERN_ALERT "DONE: %u\n", temp & (1 << 1)); 
 	printk(KERN_ALERT "TA : %u\n", temp_d & 1);
 
-	if(!(temp & 1<<8))
-		printk(KERN_INFO "No Read Request Errors Detected\n");
+	if((!(temp & 1<<8)) && (temp_d & (1 << 1)))
+		printk(KERN_INFO "No Read Request Errors Detected, OK\n");
 	else
-		printk(KERN_INFO "Read Read Request Error occured\n");
+		printk(KERN_INFO "Read Read Request Error occured, FAIL\n");
 
-	if(temp_d & 1<<1)
+	/*if(temp_d & 1<<1)
 		printk(KERN_INFO "Read Request OK");
 	else
 		printk(KERN_INFO "Read Request is Denied");
 	
 	printk(KERN_ALERT "#########################");
+	*/
 
 }
 
@@ -444,7 +445,6 @@ int i2c_driver_init(void) {
 	printk(KERN_ALERT "Value of SLAVE_ADDR: %u\n", temp);
 
 	InitSlave();
-	SendZero();
 
 	return 0;
 
@@ -484,31 +484,39 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	unsigned int temp_d = 0;
 	unsigned short i = 0;
 
-	//SendZero(); // Tell nunchuck to prepare for data send
+	SendZero(); // Tell nunchuck to prepare for data send
+
+	printk(KERN_ALERT "#############################\n");
 
 	/* Clear status register before new transmision */
 	iowrite32(CLEAR_STATUS, reg_s);
 
 	temp = ioread32(reg_s);
+	temp_d = temp;
 	temp &= 1 << 1;
-	printk(KERN_ALERT "DONE POSLE CLEAR DONE: %u\n", temp);
+	temp_d &= 1;
+	printk(KERN_ALERT "DONE: %u\n", temp);
+	printk(KERN_ALERT "TA: %u\n", temp_d);
+
 
 	/* Ready C reg for read, clear fifo */
+	printk(KERN_ALERT "CLEARING FIFO\n");
 	iowrite32(SETUP_CTRL_RECIVE, reg_c);
 
 	temp = ioread32(reg_s);
 	temp &= 1 << 5;
 
 	if(temp)
-		printk(KERN_ALERT "FIFO GOT SOMETHING IN");
+		printk(KERN_ALERT "FIFO GOT SOMETHING IN\n");
 	else
-		printk(KERN_ALERT "FIFO IS CLEAR");
+		printk(KERN_ALERT "FIFO IS CLEAR\n");
 
 	/* Set expected data length */
+	printk(KERN_ALERT "SETTING DLEN\n");
 	iowrite32(0x00000006, reg_dlen);
 	
 	temp = ioread32(reg_dlen);
-	printk(KERN_ALERT "DLEN BEFORE TRANSFER : %u\n", temp);
+	printk(KERN_ALERT "DLEN : %u\n", temp);
 
 	/* Start transfer */
 	printk(KERN_ALERT "STARTING TRANSFER");
@@ -516,15 +524,15 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 
 	/* Waiting for DONE = 1 */
 	do{
-
 		temp = ioread32(reg_s);
-		temp &= 1 << 1;
-
-	}while(temp != 2);
+	}while((temp & 1));
 	
 	temp = ioread32(reg_s);
+	temp_d = temp;
 	temp &= 1 << 1;
-	printk(KERN_ALERT "DONE: %d\n", temp);
+	temp_d &= 1;
+	printk(KERN_ALERT "DONE: %u\n", temp);
+	printk(KERN_ALERT "TA: %u\n", temp);
 
 	temp = ioread32(reg_s);
 	temp &= 1 << 5;
