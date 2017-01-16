@@ -64,7 +64,7 @@ MODULE_LICENSE("Dual BSD/GPL");
 #define START_TRANSFER_SEND (0x00008080)
 #define START_TRANSFER_RECIVE (0x00008081)
 #define CLEAR_STATUS (0x00000302)
-#define SETUP_CTRL_SEND (0x00008100)
+#define SETUP_CTRL_SEND (0x00008110)
 #define SETUP_CTRL_RECIVE (0x00008031)
 
 // Declaration of i2c_driver.c functions
@@ -271,6 +271,10 @@ void InitSlave(void) {
 		temp = ioread32(reg_s);
 	} while(!(temp & (1 << 1))); // While !DONE
 
+	
+	temp = ioread32(reg_s);
+	printk(KERN_ALERT "ERROR: %u\n", temp & (1 << 8));
+
 	temp = ioread32(reg_s);
 	temp_d = temp;
 
@@ -290,12 +294,12 @@ void InitSlave(void) {
 
 
 
-	if((!(temp & (1 << 8))) && (temp_d & (1<<1))) // If ERROR == 0
+	/*if((!(temp & (1 << 8)))) // If ERROR == 0
 		printk(KERN_ALERT "No errors detected, INIT OK");
 	else
 		printk(KERN_ALERT "Errors Detected, INIT FAILED\n");
 
-	/*if(temp_d & (1 << 1)) // If DONE == 1
+	if(temp_d & (1 << 1)) // If DONE == 1
 		printk(KERN_ALERT "Handshake completed");
 	else
 		printk(KERN_ALERT "Handshake error, transfer incomplete\n");
@@ -322,7 +326,7 @@ void SendZero(void){
 
 	
 	/* Ready C reg for write, clear fifo */
-	iowrite32(SETUP_CTRL_SEND+1, reg_c);
+	iowrite32(SETUP_CTRL_SEND, reg_c);
 
 	temp = ioread32(reg_s);
 	temp &= 1 << 5;
@@ -368,9 +372,15 @@ void SendZero(void){
 		temp = ioread32(reg_s);
 	} while(!(temp & (1 << 1)));
 
+	temp = ioread32(reg_s);
+	printk(KERN_ALERT "ERROR: %u\n", temp & (1 << 8));
+
 	temp = ioread32(reg_dlen);
 	printk(KERN_ALERT "DLEN: %u\n",temp);
 
+	
+	temp = ioread32(reg_s);
+	printk(KERN_ALERT "ERROR: %u\n", temp & (1 << 8));
 	
 	temp = ioread32(reg_s);
 	temp &= 1 << 5;
@@ -386,10 +396,11 @@ void SendZero(void){
 	printk(KERN_ALERT "DONE: %u\n", temp & (1 << 1)); 
 	printk(KERN_ALERT "TA : %u\n", temp_d & 1);
 
-	if((!(temp & 1<<8)) && (temp_d & (1 << 1)))
+	/*if((!(temp & 1<<8)) && (temp_d & (1 << 1)))
 		printk(KERN_INFO "No Read Request Errors Detected, OK\n");
 	else
 		printk(KERN_INFO "Read Read Request Error occured, FAIL\n");
+	*/
 
 	/*if(temp_d & 1<<1)
 		printk(KERN_INFO "Read Request OK");
@@ -430,7 +441,7 @@ int i2c_driver_init(void) {
 	SetGpioPinDirection(GPIO_02, GPIO_DIRECTION_ALT0);
 	SetGpioPinDirection(GPIO_03, GPIO_DIRECTION_ALT0);
 	SetInternalPullUpDown(GPIO_02, PULL_UP);
-	SetInternalPullUpDown(GPIO_03, PULL_DOWN);
+	SetInternalPullUpDown(GPIO_03, PULL_UP);
 
 	/* Remaping registers virtual addreses to physical */
 	reg_c = ioremap(BSC1_REG_C, 4);
@@ -525,14 +536,17 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	/* Waiting for DONE = 1 */
 	do{
 		temp = ioread32(reg_s);
-	}while(!(temp & (1 << 1)) && !(temp & 1));
+	}while(!(temp & (1 << 1)));
+
+	temp = ioread32(reg_s);
+	printk(KERN_ALERT "ERROR: %u\n", temp & (1 << 8));
 	
 	temp = ioread32(reg_s);
 	temp_d = temp;
 	temp &= 1 << 1;
 	temp_d &= 1;
 	printk(KERN_ALERT "DONE: %u\n", temp);
-	printk(KERN_ALERT "TA: %u\n", temp);
+	printk(KERN_ALERT "TA: %u\n", temp_d);
 
 	temp = ioread32(reg_s);
 	temp &= 1 << 5;
@@ -549,12 +563,13 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 		temp = ioread32(reg_s);
 		temp &= 1<<5;
 		temp_d = ioread32(reg_fifo);
-		i2c_driver_buffer[i] = (temp_d ^ 0x17) + 0x17;
+		i2c_driver_buffer[i] = temp_d;
 		i++;
 		printk(KERN_ALERT "DATA: %u\n", temp_d);
-		if(i == 6)
+		/*if(i == 6)
 			break;				
-	
+		*/	
+
 	}while(temp);
 
 	if(*f_pos == 0) {
