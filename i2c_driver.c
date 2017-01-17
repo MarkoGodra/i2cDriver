@@ -641,6 +641,8 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	printk(KERN_ALERT "STARTING TRANSFER");
 	iowrite32(START_TRANSFER_RECIVE, reg_c);
 
+	//qwerty
+
 	/* Waiting for DONE = 1 */
 	do{
 		temp = ioread32(reg_s);
