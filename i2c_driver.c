@@ -100,6 +100,7 @@ volatile void *reg_dlen = NULL;
 volatile void *reg_slave_addr = NULL;
 volatile void *reg_fifo = NULL;
 volatile void *reg_s = NULL;
+volatile void *reg_div = NULL;
 
 unsigned int GetGPFSELReg(char pin){
     	unsigned int addr;
@@ -214,6 +215,12 @@ void InitSlave(void) {
 	unsigned int temp = 0;
 	unsigned int temp_d = 0;
 
+	iowrite32(0x000009C4, reg_div);
+
+	temp = ioread32(reg_div);
+	printk(KERN_ALERT "DIV: %u\n", temp & (0xffff));
+	
+
 	/* Clear S reg */
 	iowrite32(CLEAR_STATUS, reg_s);
 
@@ -236,7 +243,104 @@ void InitSlave(void) {
 	
 	/* Write to FIFO reg */
 	printk(KERN_ALERT "WRITING TO FIFO");
-	iowrite32(0x00000042, reg_fifo);
+	iowrite32(0x000000F0, reg_fifo);
+	iowrite32(0x00000055, reg_fifo);
+
+	temp = ioread32(reg_s);
+	temp &= 1 << 5;
+
+	if(temp)
+		printk(KERN_ALERT "THERE IS SOMETHING IN FIFO");
+	else
+		printk(KERN_ALERT "FIFO IS CLEAR");
+	
+	/* Setup DLEN reg */
+	printk(KERN_ALERT "SETTING DLEN ");
+	iowrite32(0x00000002, reg_dlen);
+	
+	temp = ioread32(reg_dlen);
+	printk(KERN_ALERT "DLEN: %u\n", temp);
+
+	temp = ioread32(reg_s);
+	temp_d = temp;
+
+	printk(KERN_ALERT "DONE: %u\n", temp & (1 << 1)); 
+	printk(KERN_ALERT "TA : %u\n", temp_d & 1);
+
+
+
+	/* Starting transfer */
+	printk(KERN_ALERT "STARTING TRANSFER");
+	iowrite32(START_TRANSFER_SEND, reg_c);
+
+	/* Polling */
+	do {
+		temp = ioread32(reg_s);
+	} while(!(temp & (1 << 1))); // While !DONE
+
+	
+	temp = ioread32(reg_s);
+	printk(KERN_ALERT "ERROR: %u\n", temp & (1 << 8));
+
+	temp = ioread32(reg_s);
+	temp_d = temp;
+
+	printk(KERN_ALERT "DONE: %u\n", temp & (1 << 1)); 
+	printk(KERN_ALERT "TA : %u\n", temp_d & 1);
+
+	temp = ioread32(reg_s);
+	temp &= 1 << 5;
+
+	if(temp)
+		printk(KERN_ALERT "THERE IS SOMETHING IN FIFO");
+	else
+		printk(KERN_ALERT "FIFO IS CLEAR");
+	
+		temp = ioread32(reg_s);
+	temp &= 1 << 5;
+
+
+
+	/*if((!(temp & (1 << 8)))) // If ERROR == 0
+		printk(KERN_ALERT "No errors detected, INIT OK");
+	else
+		printk(KERN_ALERT "Errors Detected, INIT FAILED\n");
+
+	if(temp_d & (1 << 1)) // If DONE == 1
+		printk(KERN_ALERT "Handshake completed");
+	else
+		printk(KERN_ALERT "Handshake error, transfer incomplete\n");
+	*/
+
+	iowrite32(0x000009C4, reg_div);
+
+	temp = ioread32(reg_div);
+	printk(KERN_ALERT "DIV: %u\n", temp & (0xffff));
+	
+
+	/* Clear S reg */
+	iowrite32(CLEAR_STATUS, reg_s);
+
+	temp = ioread32(reg_s);
+	temp_d = temp;
+
+	printk(KERN_ALERT "DONE: %u\n", temp & (1 << 1)); 
+	printk(KERN_ALERT "TA : %u\n", temp_d & 1);
+
+	/* Setup C reg */
+	iowrite32(SETUP_CTRL_SEND, reg_c);
+
+	temp = ioread32(reg_s);
+	temp &= 1 << 5;
+
+	if(temp)
+		printk(KERN_ALERT "THERE IS SOMETHING IN FIFO");
+	else
+		printk(KERN_ALERT "FIFO IS CLEAR");
+	
+	/* Write to FIFO reg */
+	printk(KERN_ALERT "WRITING TO FIFO");
+	iowrite32(0x000000FB, reg_fifo);
 	iowrite32(0x00000000, reg_fifo);
 
 	temp = ioread32(reg_s);
@@ -304,6 +408,8 @@ void InitSlave(void) {
 	else
 		printk(KERN_ALERT "Handshake error, transfer incomplete\n");
 	*/
+
+
 
 }
 
@@ -449,6 +555,7 @@ int i2c_driver_init(void) {
 	reg_slave_addr = ioremap(BSC1_REG_SLAVE_ADDR, 4);
 	reg_fifo = ioremap(BSC1_REG_FIFO, 4);
 	reg_s = ioremap(BSC1_REG_S, 4);
+	reg_div = ioremap(BSC1_REG_DIV, 4);
 
 	/* Set device address */
 	iowrite32(0x00000052, reg_slave_addr);
@@ -496,6 +603,7 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	unsigned short i = 0;
 
 	SendZero(); // Tell nunchuck to prepare for data send
+
 
 	printk(KERN_ALERT "#############################\n");
 
@@ -565,11 +673,9 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 		temp_d = ioread32(reg_fifo);
 		i2c_driver_buffer[i] = temp_d;
 		i++;
-		printk(KERN_ALERT "DATA: %u\n", temp_d);
-		/*if(i == 6)
-			break;				
-		*/	
-
+		printk(KERN_ALERT "DATA: %x\n", temp_d);
+		if(i == 6)
+			break;					
 	}while(temp);
 
 	if(*f_pos == 0) {
