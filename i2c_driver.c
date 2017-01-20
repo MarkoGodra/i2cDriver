@@ -291,11 +291,9 @@ void SendZero(void){
 	iowrite32(0x00000000, reg_fifo);
 
 	/* DLEN = 1 */
-	printk(KERN_ALERT "SETTING DLEN");
 	iowrite32(0x00000001, reg_dlen);
 
 	/* Triger transfer */
-	printk(KERN_ALERT "STARTING TRANSFER");
 	iowrite32(START_TRANSFER_SEND, reg_c);
 
 	/* Polling */
@@ -304,42 +302,49 @@ void SendZero(void){
 	} while(!(temp & (1 << 1)));
 
 	temp = ioread32(reg_s);
-	printk(KERN_ALERT "ERROR: %u\n", temp & (1 << 8));
-
-	temp = ioread32(reg_dlen);
-	printk(KERN_ALERT "DLEN: %u\n",temp);
-
-	
-	temp = ioread32(reg_s);
-	printk(KERN_ALERT "ERROR: %u\n", temp & (1 << 8));
-	
-	temp = ioread32(reg_s);
-	temp &= 1 << 5;
-
+	temp &= 1 << 1;
 	if(temp)
-		printk(KERN_ALERT "THERE IS SOMETHING IN FIFO");
+		printk(KERN_ALERT "Read Request Successful\n");
 	else
-		printk(KERN_ALERT "FIFO IS CLEAR");
+		printk(KERN_ALERT "Read Request Failed\n");
+}
 
-	temp = ioread32(reg_s);
-	temp_d = temp;
+void ReciveData(void){
 
-	printk(KERN_ALERT "DONE: %u\n", temp & (1 << 1)); 
-	printk(KERN_ALERT "TA : %u\n", temp_d & 1);
+	unsigned int temp;
+	unsigned int temp_d;
+	unsigned short i;
 
-	/*if((!(temp & 1<<8)) && (temp_d & (1 << 1)))
-		printk(KERN_INFO "No Read Request Errors Detected, OK\n");
-	else
-		printk(KERN_INFO "Read Read Request Error occured, FAIL\n");
-	*/
-
-	/*if(temp_d & 1<<1)
-		printk(KERN_INFO "Read Request OK");
-	else
-		printk(KERN_INFO "Read Request is Denied");
+	i = 0;
 	
-	printk(KERN_ALERT "#########################");
-	*/
+	/* Clear status register before new transmision */
+	iowrite32(CLEAR_STATUS, reg_s);
+
+	/* Ready C reg for read, clear fifo */
+	iowrite32(SETUP_CTRL_RECIVE, reg_c);
+
+	/* Set expected data length */
+	iowrite32(0x00000006, reg_dlen);
+	
+	/* Start transfer */
+	iowrite32(START_TRANSFER_RECIVE, reg_c);
+
+	/* Waiting for DONE = 1 */
+	do{
+		temp = ioread32(reg_s);
+	}while(!(temp & (1 << 1)));
+
+	/* Reading data from fifo while there is some */
+	do{
+		temp = ioread32(reg_s);
+		temp &= 1<<5;
+		temp_d = ioread32(reg_fifo);
+		i2c_driver_buffer[i] = temp_d;
+		i++;
+		printk(KERN_ALERT "DATA: %x\n", temp_d);
+		if(i == 6)
+			break;					
+	}while(temp);
 
 }
 
@@ -423,92 +428,17 @@ static int i2c_driver_release(struct inode *inode, struct file *flip){
 static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t *f_pos) {
 
 	int data_size = 0;
-	unsigned int temp = 0;
-	unsigned int temp_d = 0;
-	unsigned short i = 0;
-
-	SendZero(); // Tell nunchuck to prepare for data send
-
-
-	printk(KERN_ALERT "#############################\n");
-
-	/* Clear status register before new transmision */
-	iowrite32(CLEAR_STATUS, reg_s);
-
-	temp = ioread32(reg_s);
-	temp_d = temp;
-	temp &= 1 << 1;
-	temp_d &= 1;
-	printk(KERN_ALERT "DONE: %u\n", temp);
-	printk(KERN_ALERT "TA: %u\n", temp_d);
-
-
-	/* Ready C reg for read, clear fifo */
-	printk(KERN_ALERT "CLEARING FIFO\n");
-	iowrite32(SETUP_CTRL_RECIVE, reg_c);
-
-	temp = ioread32(reg_s);
-	temp &= 1 << 5;
-
-	if(temp)
-		printk(KERN_ALERT "FIFO GOT SOMETHING IN\n");
-	else
-		printk(KERN_ALERT "FIFO IS CLEAR\n");
-
-	/* Set expected data length */
-	printk(KERN_ALERT "SETTING DLEN\n");
-	iowrite32(0x00000006, reg_dlen);
-	
-	temp = ioread32(reg_dlen);
-	printk(KERN_ALERT "DLEN : %u\n", temp);
-
-	/* Start transfer */
-	printk(KERN_ALERT "STARTING TRANSFER");
-	iowrite32(START_TRANSFER_RECIVE, reg_c);
-
-	//qwerty
-
-	/* Waiting for DONE = 1 */
-	do{
-		temp = ioread32(reg_s);
-	}while(!(temp & (1 << 1)));
-
-	temp = ioread32(reg_s);
-	printk(KERN_ALERT "ERROR: %u\n", temp & (1 << 8));
-	
-	temp = ioread32(reg_s);
-	temp_d = temp;
-	temp &= 1 << 1;
-	temp_d &= 1;
-	printk(KERN_ALERT "DONE: %u\n", temp);
-	printk(KERN_ALERT "TA: %u\n", temp_d);
-
-	temp = ioread32(reg_s);
-	temp &= 1 << 5;
-
-	if(temp)
-		printk(KERN_ALERT "FIFO GOT SOMETHING IN");
-	else
-		printk(KERN_ALERT "FIFO IS CLEAR");
-
-	temp = ioread32(reg_dlen);
-	printk(KERN_ALERT "DLEN: %u\n", temp);
-
-	do{
-		temp = ioread32(reg_s);
-		temp &= 1<<5;
-		temp_d = ioread32(reg_fifo);
-		i2c_driver_buffer[i] = temp_d;
-		i++;
-		printk(KERN_ALERT "DATA: %x\n", temp_d);
-		if(i == 6)
-			break;					
-	}while(temp);
 
 	if(*f_pos == 0) {
 
-		data_size = strlen(i2c_driver_buffer);
+		/* Send zero, to prepare for read */
+		SendZero();
+		
+		/* Recive data from nunchuck */
+		ReciveData();
 
+		data_size = strlen(i2c_driver_buffer);
+	
 		if(copy_to_user(buf, i2c_driver_buffer, data_size) != 0) {
 
 			return -EFAULT;
@@ -519,7 +449,7 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 			return data_size;	
 	
 		}
-	
+		
 	} else {
 
 		return 0;

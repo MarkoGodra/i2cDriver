@@ -26,10 +26,10 @@ int main()
        	return -1;
     }
 
-	msg[0] = 'A';
-	msg[1] = (unsigned char)slave_addr;
+	buff[0] = 'A';
+	buff[1] = (unsigned char)slave_addr;
 
-	fputs(msg);	
+	fpritnf("%s", buff);	
     
 	close(file_desc);
     return 0;
