@@ -303,10 +303,13 @@ void SendZero(void){
 
 	temp = ioread32(reg_s);
 	temp &= 1 << 1;
-	if(temp)
+
+	/*if(temp)
 		printk(KERN_ALERT "Read Request Successful\n");
 	else
 		printk(KERN_ALERT "Read Request Failed\n");
+	*/
+
 }
 
 void ReciveData(void){
@@ -341,7 +344,7 @@ void ReciveData(void){
 		temp_d = ioread32(reg_fifo);
 		i2c_driver_buffer[i] = temp_d;
 		i++;
-		printk(KERN_ALERT "DATA: %x\n", temp_d);
+		//printk(KERN_ALERT "DATA: %x\n", temp_d);
 		if(i == 6)
 			break;					
 	}while(temp);
@@ -429,14 +432,21 @@ static int i2c_driver_release(struct inode *inode, struct file *flip){
 static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t *f_pos) {
 
 	int data_size = 0;
+	//unsigned short i = 0;
+
+	/* Send zero, to prepare for read */
+	SendZero();
+		
+	/* Recive data from nunchuck */
+	ReciveData();
+
+	/*for(i = 0; i < 6; i++)
+		printk(KERN_ALERT "Data[%d] = %X\n", i, i2c_driver_buffer[i]);
+	*/
 
 	if(*f_pos == 0) {
 
-		/* Send zero, to prepare for read */
-		SendZero();
-		
-		/* Recive data from nunchuck */
-		ReciveData();
+		//printk(KERN_ALERT "USAO \n");
 
 		data_size = strlen(i2c_driver_buffer);
 	

@@ -13,6 +13,7 @@ int main()
     int file_desc;
     unsigned int slave_addr;
 	unsigned char buff[BUF_LEN];
+	unsigned short i;
 
 	/* Initializig variables */	
 	memset(buff, '\0', BUF_LEN);
@@ -33,8 +34,28 @@ int main()
 	buff[0] = 'A';
 	buff[1] = (unsigned char)slave_addr;
 
-	write(file_desc, buff, 2);
-    
+	write(file_desc, buff, BUF_LEN);
+
 	close(file_desc);
-    return 0;
+ 
+	while(1){
+
+	   file_desc = open("/dev/i2c_dummy", O_RDWR);
+
+    	if(file_desc < 0)
+   		 {
+       		printf("Error, 'i2c_dummy' not opened\n");
+       		return -1;
+   		 }
+
+		system("clear");	
+		read(file_desc, buff, BUF_LEN);
+		for(i = 0; i < 6; i++)
+			printf("DATA[%i] = %X\n", i, buff[i]);
+
+		close(file_desc);
+
+	}
+    
+   return 0;
 }
