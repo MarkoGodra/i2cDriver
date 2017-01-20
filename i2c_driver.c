@@ -351,7 +351,7 @@ void ReciveData(void){
 int i2c_driver_init(void) {
 
 	int result;	
-	unsigned int temp;	
+	//unsigned int temp;	
 
 	result = register_chrdev(0, "i2c_driver", &i2c_driver_fops);
 	if(result < 0){
@@ -388,10 +388,10 @@ int i2c_driver_init(void) {
 	reg_div = ioremap(BSC1_REG_DIV, 4);
 
 	/* Set device address */
-	iowrite32(0x00000052, reg_slave_addr);
+	/*iowrite32(0x00000052, reg_slave_addr);
 	temp = ioread32(reg_slave_addr);
 	printk(KERN_ALERT "Value of SLAVE_ADDR: %u\n", temp);
-
+	*/
 	InitSlave();
 
 	return 0;
@@ -460,13 +460,28 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 
 static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, loff_t *f_pos){
 
-
+	unsigned int temp;
 	
 	if(copy_from_user(i2c_driver_buffer, buf, len) != 0) {
 
 		return -EFAULT;
 
 	} else {
+
+		if(i2c_driver_buffer[0] == 'A'){
+
+			printk(KERN_ALERT "DATA RECIVED: %c\n", i2c_driver_buffer[0]);
+			printk(KERN_ALERT "DATA RECIVED: %x\n", i2c_driver_buffer[1]);
+			temp = i2c_driver_buffer[1];
+			iowrite32(temp, reg_slave_addr);
+			
+
+			temp = ioread32(reg_slave_addr);
+			printk(KERN_ALERT "Slave Address is set to: %x\n", temp);		
+	
+		}
+
+			
 
 		return len;
 

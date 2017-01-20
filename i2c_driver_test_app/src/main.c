@@ -26,10 +26,14 @@ int main()
        	return -1;
     }
 
+	printf("Enter Slave Address: \n");
+	scanf("%x", &slave_addr);
+	printf("Slave Address You Entered: %X\n", slave_addr);
+
 	buff[0] = 'A';
 	buff[1] = (unsigned char)slave_addr;
 
-	fpritnf("%s", buff);	
+	write(file_desc, buff, 1);
     
 	close(file_desc);
     return 0;
