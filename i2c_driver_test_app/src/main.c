@@ -33,7 +33,7 @@ int main()
 	buff[0] = 'A';
 	buff[1] = (unsigned char)slave_addr;
 
-	write(file_desc, buff, 1);
+	write(file_desc, buff, 2);
     
 	close(file_desc);
     return 0;

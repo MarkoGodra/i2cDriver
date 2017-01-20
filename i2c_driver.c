@@ -351,7 +351,7 @@ void ReciveData(void){
 int i2c_driver_init(void) {
 
 	int result;	
-	//unsigned int temp;	
+//	unsigned int temp;	
 
 	result = register_chrdev(0, "i2c_driver", &i2c_driver_fops);
 	if(result < 0){
@@ -391,8 +391,9 @@ int i2c_driver_init(void) {
 	/*iowrite32(0x00000052, reg_slave_addr);
 	temp = ioread32(reg_slave_addr);
 	printk(KERN_ALERT "Value of SLAVE_ADDR: %u\n", temp);
-	*/
+
 	InitSlave();
+	*/
 
 	return 0;
 
@@ -477,7 +478,9 @@ static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, 
 			
 
 			temp = ioread32(reg_slave_addr);
-			printk(KERN_ALERT "Slave Address is set to: %x\n", temp);		
+			printk(KERN_ALERT "Slave Address is set to: %x\n", temp);
+		
+			InitSlave();		
 	
 		}
 
