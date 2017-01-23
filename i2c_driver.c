@@ -304,12 +304,6 @@ void SendZero(void){
 	temp = ioread32(reg_s);
 	temp &= 1 << 1;
 
-	/*if(temp)
-		printk(KERN_ALERT "Read Request Successful\n");
-	else
-		printk(KERN_ALERT "Read Request Failed\n");
-	*/
-
 }
 
 void ReciveData(void){
@@ -354,7 +348,6 @@ void ReciveData(void){
 int i2c_driver_init(void) {
 
 	int result;	
-//	unsigned int temp;	
 
 	result = register_chrdev(0, "i2c_driver", &i2c_driver_fops);
 	if(result < 0){
@@ -390,14 +383,6 @@ int i2c_driver_init(void) {
 	reg_s = ioremap(BSC1_REG_S, 4);
 	reg_div = ioremap(BSC1_REG_DIV, 4);
 
-	/* Set device address */
-	/*iowrite32(0x00000052, reg_slave_addr);
-	temp = ioread32(reg_slave_addr);
-	printk(KERN_ALERT "Value of SLAVE_ADDR: %u\n", temp);
-
-	InitSlave();
-	*/
-
 	return 0;
 
 }
@@ -432,7 +417,6 @@ static int i2c_driver_release(struct inode *inode, struct file *flip){
 static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t *f_pos) {
 
 	int data_size = 0;
-	//unsigned short i = 0;
 
 	/* Send zero, to prepare for read */
 	SendZero();
@@ -440,13 +424,7 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 	/* Recive data from nunchuck */
 	ReciveData();
 
-	/*for(i = 0; i < 6; i++)
-		printk(KERN_ALERT "Data[%d] = %X\n", i, i2c_driver_buffer[i]);
-	*/
-
 	if(*f_pos == 0) {
-
-		//printk(KERN_ALERT "USAO \n");
 
 		data_size = strlen(i2c_driver_buffer);
 	
@@ -481,20 +459,14 @@ static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, 
 
 		if(i2c_driver_buffer[0] == 'A'){
 
-			printk(KERN_ALERT "DATA RECIVED: %c\n", i2c_driver_buffer[0]);
-			printk(KERN_ALERT "DATA RECIVED: %x\n", i2c_driver_buffer[1]);
 			temp = i2c_driver_buffer[1];
 			iowrite32(temp, reg_slave_addr);
-			
-
 			temp = ioread32(reg_slave_addr);
 			printk(KERN_ALERT "Slave Address is set to: %x\n", temp);
 		
 			InitSlave();		
 	
 		}
-
-			
 
 		return len;
 
