@@ -78,6 +78,8 @@ static ssize_t i2c_driver_write(struct file *, const char *buf, size_t, loff_t *
 /* Buffer to store data */
 #define BUFF_LEN 80
 static char i2c_driver_buffer[BUFF_LEN];
+static char data_for_sending[BUFF_LEN];
+static char data_for_reading[BUFF_LEN];
 
 /* Structure that declares the usual file access functions. */
 struct file_operations i2c_driver_fops =
@@ -210,12 +212,10 @@ void SetGpioPinDirection(char pin, char direction){
     iowrite32(tmp, addr);
 }
 
-void InitSlave(void) {
+int SendData(int n){
 
-	unsigned int temp = 0;
-
-	/* Set Frequency Divider */
-	iowrite32(0x000009C4, reg_div);
+	unsigned int temp;
+	short int i;
 
 	/* Clear S reg */
 	iowrite32(CLEAR_STATUS, reg_s);
@@ -224,36 +224,12 @@ void InitSlave(void) {
 	iowrite32(SETUP_CTRL_SEND, reg_c);
 
 	/* Write to FIFO reg */
-	iowrite32(0x000000F0, reg_fifo);
-	iowrite32(0x00000055, reg_fifo);
+	for(i = 0; i < n; i++){
+		iowrite32((unsigned int)data_for_sending[i], reg_fifo);
+	}
 
 	/* Setup DLEN reg */
-	iowrite32(0x00000002, reg_dlen);
-	
-	/* Starting transfer */
-	iowrite32(START_TRANSFER_SEND, reg_c);
-
-	/* Polling */
-	do {
-		temp = ioread32(reg_s);
-	} while(!(temp & (1 << 1))); // While !DONE
-
-	
-	/* Set Frequency Divider */
-	iowrite32(0x000009C4, reg_div);
-
-	/* Clear S reg */
-	iowrite32(CLEAR_STATUS, reg_s);
-
-	/* Setup C reg */
-	iowrite32(SETUP_CTRL_SEND, reg_c);
-	
-	/* Write to FIFO reg */
-	iowrite32(0x000000FB, reg_fifo);
-	iowrite32(0x00000000, reg_fifo);
-	
-	/* Setup DLEN reg */
-	iowrite32(0x00000002, reg_dlen);
+	iowrite32((unsigned int)n, reg_dlen);
 	
 	/* Starting transfer */
 	iowrite32(START_TRANSFER_SEND, reg_c);
@@ -264,49 +240,17 @@ void InitSlave(void) {
 	} while(!(temp & (1 << 1))); // While !DONE
 
 	temp = ioread32(reg_s);
-	temp &= (1 << 8);
-
+	temp &= 1 << 8;
+	
+	/* If there is error transfer */
 	if(temp)
-		printk(KERN_ALERT "Slave Not Recognised");
-	else 
-		printk(KERN_ALERT "Init Completed");
+		return -1;
+	else
+		return 0;
 
 }
 
-void SendZero(void){
-
-	unsigned int temp = 0;
-	unsigned int temp_d = 0;
-
-	/* Clear status register */
-	iowrite32(CLEAR_STATUS, reg_s);
-
-	temp = ioread32(reg_s);
-	temp_d = temp;
-
-	/* Ready C reg for write, clear fifo */
-	iowrite32(SETUP_CTRL_SEND, reg_c);
-	
-	/* Fill the fifo reg */
-	iowrite32(0x00000000, reg_fifo);
-
-	/* DLEN = 1 */
-	iowrite32(0x00000001, reg_dlen);
-
-	/* Triger transfer */
-	iowrite32(START_TRANSFER_SEND, reg_c);
-
-	/* Polling */
-	do {
-		temp = ioread32(reg_s);
-	} while(!(temp & (1 << 1)));
-
-	temp = ioread32(reg_s);
-	temp &= 1 << 1;
-
-}
-
-void ReciveData(void){
+int ReceiveData(int n){
 
 	unsigned int temp;
 	unsigned int temp_d;
@@ -321,7 +265,7 @@ void ReciveData(void){
 	iowrite32(SETUP_CTRL_RECIVE, reg_c);
 
 	/* Set expected data length */
-	iowrite32(0x00000006, reg_dlen);
+	iowrite32((unsigned int)n, reg_dlen);
 	
 	/* Start transfer */
 	iowrite32(START_TRANSFER_RECIVE, reg_c);
@@ -337,11 +281,19 @@ void ReciveData(void){
 		temp &= 1<<5;
 		temp_d = ioread32(reg_fifo);
 		i2c_driver_buffer[i] = temp_d;
+		data_for_reading[i] = temp_d;
 		i++;
-		//printk(KERN_ALERT "DATA: %x\n", temp_d);
 		if(i == 6)
 			break;					
 	}while(temp);
+
+	temp = ioread32(reg_s);
+	temp &= 1 << 8;
+	
+	if(temp)
+		return -1;
+	else
+		return 0;
 
 }
 
@@ -383,6 +335,9 @@ int i2c_driver_init(void) {
 	reg_s = ioremap(BSC1_REG_S, 4);
 	reg_div = ioremap(BSC1_REG_DIV, 4);
 
+	/* Set Frequency Divider */
+	iowrite32(0x000009C4, reg_div);
+
 	return 0;
 
 }
@@ -418,12 +373,6 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 
 	int data_size = 0;
 
-	/* Send zero, to prepare for read */
-	SendZero();
-		
-	/* Recive data from nunchuck */
-	ReciveData();
-
 	if(*f_pos == 0) {
 
 		data_size = strlen(i2c_driver_buffer);
@@ -450,6 +399,8 @@ static ssize_t i2c_driver_read(struct file *filp, char *buf, size_t len, loff_t 
 static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, loff_t *f_pos){
 
 	unsigned int temp;
+	int n, i;
+	
 	
 	if(copy_from_user(i2c_driver_buffer, buf, len) != 0) {
 
@@ -462,10 +413,24 @@ static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, 
 			temp = i2c_driver_buffer[1];
 			iowrite32(temp, reg_slave_addr);
 			temp = ioread32(reg_slave_addr);
-			printk(KERN_ALERT "Slave Address is set to: %x\n", temp);
-		
-			InitSlave();		
+			printk(KERN_ALERT "Slave Address is set to: %x\n", temp);		
 	
+		} else if (i2c_driver_buffer[0] == 'S'){
+			
+			n = (int)i2c_driver_buffer[1];
+			
+			for(i = 2; i < 2 + n; i++)
+				i2c_driver_buffer[i] = data_for_sending[i - 2]; 
+					
+			if(SendData(n) < 0)
+				printk(KERN_ALERT "Sending data failed, device not responding!\n");
+		
+		} else if (i2c_driver_buffer[0] == 'R'){
+
+			n = (int)i2c_driver_buffer[1];
+			
+			if(ReceiveData(n) < 0)
+				printk(KERN_ALERT "Reading data failed, device not responding!\n");	
 		}
 
 		return len;

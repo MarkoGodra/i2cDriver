@@ -27,7 +27,19 @@ void* print_state(void* param){
 			return 0;
 		}
 
-		system("clear");	
+		system("clear");
+
+		/* Sending zero */
+		buff[0] = 'S';
+		buff[1] = 1;
+		buff[2] = 0x00;
+		write(file_desc, buff, BUF_LEN);
+
+		/* Setting up the read */
+		buff[0] = 'R';
+		buff[1] = 6;
+		write(file_desc, buff, BUF_LEN);
+
 		read(file_desc, buff, BUF_LEN);
 
 		printf("Joystick X: %d\n", (short int)buff[0]);
@@ -44,7 +56,7 @@ void* print_state(void* param){
 
 		printf("Accelometer X: %d\n", (short int)temp);
 
-		temp = buff[2];			
+		temp = buff[3];			
 		temp = temp << 2;
 		
 		mask = buff[5];
@@ -55,7 +67,7 @@ void* print_state(void* param){
 
 		printf("Accelometer Y: %d\n", (short int)temp);
 
-		temp = buff[2];			
+		temp = buff[4];			
 		temp = temp << 2;
 		
 		mask = buff[5];
@@ -115,6 +127,21 @@ int main()
 
 	write(file_desc, buff, BUF_LEN);
 
+	/* Init the slave */
+	buff[0] = 'S';
+	buff[1] = 2;
+	buff[2] = 0xF0;
+	buff[3] = 0x55;
+
+	write(file_desc, buff, BUF_LEN);
+
+	buff[0] = 'S';
+	buff[1] = 2;
+	buff[2] = 0xFB;
+	buff[3] = 0x00;
+
+	write(file_desc, buff, BUF_LEN);
+	
 	close(file_desc);
 
 	pthread_create(&h_print_state, NULL, print_state, 0);
