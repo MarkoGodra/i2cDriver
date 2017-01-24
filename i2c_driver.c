@@ -431,6 +431,7 @@ static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, 
 			
 			if(ReceiveData(n) < 0)
 				printk(KERN_ALERT "Reading data failed, device not responding!\n");	
+			
 		}
 
 		return len;

@@ -11,6 +11,7 @@
 
 int file_desc;
 unsigned char buff[BUF_LEN];
+static sem_t sem_finish_signal;
 
 void* print_state(void* param){
 
@@ -18,6 +19,9 @@ void* print_state(void* param){
 	unsigned int mask;
 
 	while(1){
+
+		if(sem_trywait(&sem_finish_signal) == 0)
+			break;
 	 	
 		file_desc = open("/dev/i2c_dummy", O_RDWR);
 
@@ -95,6 +99,7 @@ void* print_state(void* param){
 
 	}
 
+	close(file_desc);
 	return 0;
 
 }
@@ -105,6 +110,8 @@ int main()
 	unsigned char c; 	
    
 	pthread_t h_print_state;
+
+	sem_init(&sem_finish_signal, 0, 0);
 
 	/* Initializig variables */	
 	memset(buff, '\0', BUF_LEN);
@@ -145,14 +152,20 @@ int main()
 	close(file_desc);
 
 	pthread_create(&h_print_state, NULL, print_state, 0);
-	pthread_detach(h_print_state);
  
 	while(1){
 			
 		scanf("%c", &c);
-		if(c == 'q')
+		if(c == 'q'){
+
+			sem_post(&sem_finish_signal);
 			break;
+
+		}
 	}
+
+	pthread_join(h_print_state, NULL);
+	sem_destroy(&sem_finish_signal);
     
    return 0;
 }
