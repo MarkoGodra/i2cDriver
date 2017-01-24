@@ -12,6 +12,7 @@
 int file_desc;
 unsigned char buff[BUF_LEN];
 static sem_t sem_finish_signal;
+static sem_t sem_error_signal;
 
 void* print_state(void* param){
 
@@ -28,7 +29,8 @@ void* print_state(void* param){
 		if(file_desc < 0)
 		{
 			printf("Error, 'i2c_dummy' not opened\n");
-			return 0;
+			sem_post(&sem_error_signal);
+			break;
 		}
 
 		system("clear");
@@ -39,12 +41,22 @@ void* print_state(void* param){
 		buff[2] = 0x00;
 		write(file_desc, buff, BUF_LEN);
 
+		usleep(100);
+
 		/* Setting up the read */
 		buff[0] = 'R';
 		buff[1] = 6;
 		write(file_desc, buff, BUF_LEN);
 
+		usleep(100);
+
 		read(file_desc, buff, BUF_LEN);
+
+		if(buff[0] == 'E'){
+			printf("Device disconected !!! \n");
+			sem_post(&sem_error_signal);
+			break;
+		}
 
 		printf("Joystick X: %d\n", (short int)buff[0]);
 		printf("Joystick Y: %d\n", (short int)buff[1]);
@@ -97,6 +109,8 @@ void* print_state(void* param){
 
 		close(file_desc);
 
+		usleep(100);
+
 	}
 
 	close(file_desc);
@@ -112,6 +126,7 @@ int main()
 	pthread_t h_print_state;
 
 	sem_init(&sem_finish_signal, 0, 0);
+	sem_init(&sem_error_signal, 0, 0);
 
 	/* Initializig variables */	
 	memset(buff, '\0', BUF_LEN);
@@ -142,19 +157,26 @@ int main()
 
 	write(file_desc, buff, BUF_LEN);
 
+	usleep(100);
+
 	buff[0] = 'S';
 	buff[1] = 2;
 	buff[2] = 0xFB;
 	buff[3] = 0x00;
 
 	write(file_desc, buff, BUF_LEN);
+
+	usleep(100);
 	
 	close(file_desc);
 
 	pthread_create(&h_print_state, NULL, print_state, 0);
  
 	while(1){
-			
+	
+		if(sem_trywait(&sem_error_signal) == 0)
+			break;
+		
 		scanf("%c", &c);
 		if(c == 'q'){
 
