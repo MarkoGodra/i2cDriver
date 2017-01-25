@@ -79,7 +79,6 @@ static ssize_t i2c_driver_write(struct file *, const char *buf, size_t, loff_t *
 #define BUFF_LEN 80
 static char i2c_driver_buffer[BUFF_LEN];
 static char data_for_sending[BUFF_LEN];
-static char data_for_reading[BUFF_LEN];
 
 /* Structure that declares the usual file access functions. */
 struct file_operations i2c_driver_fops =
@@ -283,9 +282,8 @@ int ReceiveData(int n){
 		temp &= 1<<5;
 		temp_d = ioread32(reg_fifo);
 		i2c_driver_buffer[i] = temp_d;
-		data_for_reading[i] = temp_d;
 		i++;
-		if(i == 6)
+		if(i == n)
 			break;					
 	}while(temp);
 
@@ -418,12 +416,12 @@ static ssize_t i2c_driver_write(struct file *filp, const char *buf, size_t len, 
 			printk(KERN_ALERT "Slave Address is set to: %x\n", temp);		
 	
 		} else if (i2c_driver_buffer[0] == 'S'){
-			
+
 			n = (int)i2c_driver_buffer[1];
-			
-			for(i = 2; i < 2 + n; i++)
-				i2c_driver_buffer[i] = data_for_sending[i - 2]; 
-					
+
+			for(i = 2; i < 2+n; i++)
+				data_for_sending[i - 2] = i2c_driver_buffer[i];
+
 			if(SendData(n) < 0)
 				printk(KERN_ALERT "Sending data failed, device not responding!\n");
 		

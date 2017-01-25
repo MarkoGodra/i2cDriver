@@ -61,7 +61,7 @@ void* print_state(void* param){
 		printf("Joystick X: %d\n", (short int)buff[0]);
 		printf("Joystick Y: %d\n", (short int)buff[1]);
 
-		temp = (unsigned int)buff[2];			
+		temp = buff[2];			
 		temp = temp << 2;
 		
 		mask = buff[5];
@@ -70,9 +70,9 @@ void* print_state(void* param){
 
 		temp = temp ^ mask;
 
-		printf("Accelometer X: %u\n", (unsigned int)temp);
+		printf("Accelometer X: %d\n", (short int)temp);
 
-		temp = (unsigned int)buff[3];			
+		temp = buff[3];			
 		temp = temp << 2;
 		
 		mask = buff[5];
@@ -81,9 +81,9 @@ void* print_state(void* param){
 
 		temp = temp ^ mask;
 
-		printf("Accelometer Y: %u\n", (unsigned int)temp);
+		printf("Accelometer Y: %d\n", (short int)temp);
 
-		temp = (unsigned int)buff[4];			
+		temp = buff[4];			
 		temp = temp << 2;
 		
 		mask = buff[5];
@@ -92,7 +92,7 @@ void* print_state(void* param){
 
 		temp = temp ^ mask;
 
-		printf("Accelometer Z: %u\n", (unsigned int)temp);
+		printf("Accelometer Z: %d\n", (short int)temp);
 
 		temp = buff[5];
 		temp &= 0x01;
